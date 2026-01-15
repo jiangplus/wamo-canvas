@@ -1,497 +1,253 @@
+/**
+ * CyberJam Canvas - 协作式无限画布
+ */
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
-// --- Neomorphism Style Constants ---
-const NEO = {
-  bg: '#FAF9F6',
-  surface: 'rgba(255, 255, 255, 0.7)',
-  ink: '#3A3A36',
-  inkLight: '#A8A8A2',
-  accent: '#E6E2D3',
-  // Soft, subtle shadows instead of hard shadows
-  shadow: '0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 6px rgba(0, 0, 0, 0.02)',
-  shadowHover: '0 8px 30px rgba(0, 0, 0, 0.06), 0 2px 10px rgba(0, 0, 0, 0.03)',
-  shadowSoft: '0 2px 12px rgba(0, 0, 0, 0.03)',
-  border: 'rgba(230, 226, 211, 0.4)',
-  radius: '16px',
-  radiusLg: '24px',
-  radiusSm: '12px',
-  // Frosted glass
-  frosted: 'rgba(255, 255, 255, 0.75)',
+// Theme & Utils
+import { NEO } from './styles/theme';
+import { generateId, getAvatarUrl, DEFAULT_ELEMENT_WIDTH, STICKER_LIST } from './utils/constants';
+import { screenToWorld } from './utils/coordinates';
+import { generateMagazineStyle, generateSmallRandomAngle } from './utils/styleGenerators';
+
+// Components
+import Header from './components/layout/Header';
+import { ActionButtons } from './components/layout/ActionButtons';
+import { Toolbar } from './components/toolbar/Toolbar';
+import { BottomControls } from './components/toolbar/BottomControls';
+import { ImageDrawer } from './components/drawers/ImageDrawer';
+import { TextDrawer } from './components/drawers/TextDrawer';
+import { StickerDrawer } from './components/drawers/StickerDrawer';
+import { CanvasElement } from './components/canvas/CanvasElement';
+import { Minimap } from './components/canvas/Minimap';
+import { Connection, ConnectionPreview } from './components/canvas/Connection';
+import { ContextMenu } from './components/ui/ContextMenu';
+
+// ============================================================================
+// INITIAL DATA
+// ============================================================================
+const INITIAL_ELEMENTS = [{
+  id: '1', type: 'image',
+  content: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=400',
+  x: 0, y: 0, width: DEFAULT_ELEMENT_WIDTH, height: null, rotation: 0,
+  creator: 'Ruoz', avatar: getAvatarUrl('Ruoz'),
+  reactions: { '❤️': ['Ruoz', 'Gong'] },
+  isLocked: false, texture: 'none', shape: null, scale: 1, zIndex: 1
+}];
+
+const INITIAL_PICTURE_POOL = {
+  public: [
+    { id: 'p1', url: 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?w=400' },
+    { id: 'p2', url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=400' }
+  ],
+  private: [{ id: 'pr1', url: 'https://images.unsplash.com/photo-1515405299443-f71bb768a69e?w=400' }]
 };
 
-// --- Icon Components (with explicit colors for visibility) ---
-const Icon = ({ children, size = 22 }) => {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {children}
-    </svg>
-  );
-};
-
-const IconImage = () => <Icon><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></Icon>;
-const IconType = () => <Icon><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></Icon>;
-const IconSmile = () => <Icon><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></Icon>;
-const IconConnect = () => <Icon><path d="M4 20 C 4 10, 20 14, 20 4" strokeDasharray="3 2" /><path d="M2 18l2 2 2-2M18 6l2-2 2 2" /></Icon>;
-const IconTrash = () => <Icon size={18}><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></Icon>;
-const IconCopy = () => <Icon size={18}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></Icon>;
-const IconLock = () => <Icon size={18}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></Icon>;
-const IconUnlock = () => <Icon size={18}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 019.9-1"/></Icon>;
-const IconShuffle = () => <Icon size={18}><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></Icon>;
-const IconEdit = () => <Icon size={18}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></Icon>;
-const IconUndo = () => <Icon size={18}><path d="M9 14L4 9l5-5"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></Icon>;
-const IconMagic = () => <Icon size={18}><path d="M12 2v2M4.93 4.93l1.41 1.41M2 12h2M4.93 19.07l1.41-1.41M12 20v2M17.66 19.07l1.41 1.41M20 12h2M17.66 4.93l1.41-1.41"/></Icon>;
-const IconScissors = () => <Icon size={18}><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/></Icon>;
-const IconCrop = () => <Icon size={18}><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></Icon>;
-const IconPlus = () => <Icon size={18}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
-const IconMessage = () => <Icon size={18}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></Icon>;
-const IconShare = () => <Icon><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></Icon>;
-const IconPublish = () => <Icon><line x1="22" y1="2" x2="11" y2="13"/><polyline points="22 2 15 22 11 13 2 9 22 2"/></Icon>;
-const IconUpload = () => <Icon><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></Icon>;
-const IconZoomIn = () => <Icon size={20}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></Icon>;
-const IconZoomOut = () => <Icon size={20}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></Icon>;
-const IconHome = () => <Icon size={20}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></Icon>;
-const IconTarget = () => <Icon size={20}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></Icon>;
-const IconMoreHorizontal = () => <Icon size={18}><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></Icon>;
-const IconLayerUp = () => <Icon size={18}><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></Icon>;
-const IconChevronUp = () => <Icon size={18}><polyline points="18 15 12 9 6 15"/></Icon>;
-
-// --- Circular Icon Button Component ---
-const IconButton = ({ onClick, title, active, danger, disabled, children, rounded = true }) => {
-  const bgColor = active ? NEO.ink : 'transparent';
-  const textColor = active ? NEO.bg : danger ? '#F87171' : NEO.ink;
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      disabled={disabled}
-      style={{
-        width: '40px',
-        height: '40px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: bgColor,
-        color: textColor,
-        borderRadius: '50%', // Always rounded
-        transition: 'all 0.2s',
-        opacity: disabled ? 0.4 : 1,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-      }}
-    >
-      {children}
-    </button>
-  );
-};
-
-// --- Text Style Generator (Black/White only with various fonts, irregular shapes) ---
-const generateMagazineStyle = () => {
-  const fonts = [
-    '"Courier New"', 
-    'Georgia', 
-    '"Times New Roman"', 
-    '"Arial Black"', 
-    '"Helvetica Neue"', 
-    'Impact',
-    '"Trebuchet MS"',
-    '"Lucida Console"',
-    'Verdana',
-    '"Palatino Linotype"'
-  ];
+// ============================================================================
+// HELPERS
+// ============================================================================
+const simplifyPoints = (points, tolerance = 3) => {
+  if (points.length < 3) return points;
   
-  // Only black on white or white on black
-  const isWhiteOnBlack = Math.random() > 0.5;
-  const bgColor = isWhiteOnBlack ? '#000000' : '#FFFFFF';
-  const textColor = isWhiteOnBlack ? '#FFFFFF' : '#000000';
+  // 1. Distance Filter
+  const filtered = [points[0]];
+  for (let i = 1; i < points.length; i++) {
+    const last = filtered[filtered.length - 1];
+    const dx = points[i].x - last.x;
+    const dy = points[i].y - last.y;
+    if (dx * dx + dy * dy > tolerance * tolerance) {
+      filtered.push(points[i]);
+    }
+  }
+  filtered.push(points[points.length - 1]);
   
-  // Generate slightly irregular rectangle (subtle random skew/rotation)
-  const skewX = (Math.random() - 0.5) * 2; // -1 to 1 degree
-  const rotation = (Math.random() - 0.5) * 4; // -2 to 2 degrees
+  // 2. Smoothing (Simple Moving Average)
+  if (filtered.length < 3) return filtered;
+  const smoothed = [filtered[0]];
+  // Multiple passes for smoother look
+  let currentPoints = filtered;
+  for (let pass = 0; pass < 2; pass++) {
+    const nextPoints = [currentPoints[0]];
+    for (let i = 1; i < currentPoints.length - 1; i++) {
+      const prev = currentPoints[i - 1];
+      const curr = currentPoints[i];
+      const next = currentPoints[i + 1];
+      nextPoints.push({
+        x: (prev.x + curr.x + next.x) / 3,
+        y: (prev.y + curr.y + next.y) / 3
+      });
+    }
+    nextPoints.push(currentPoints[currentPoints.length - 1]);
+    currentPoints = nextPoints;
+    smoothed.length = 0;
+    smoothed.push(...currentPoints);
+  }
   
-  // Vary padding slightly for hand-cut feel
-  const paddingV = 4 + Math.floor(Math.random() * 4); // 4-7px
-  const paddingH = 8 + Math.floor(Math.random() * 6); // 8-13px
-  
-  return {
-    fontFamily: fonts[Math.floor(Math.random() * fonts.length)],
-    fontSize: 20 + Math.floor(Math.random() * 6), // 20-25px
-    fontWeight: Math.random() > 0.5 ? 'bold' : 'normal',
-    color: textColor,
-    background: bgColor,
-    padding: `${paddingV}px ${paddingH}px`,
-    borderRadius: '2px', // Very slight rounding for paper feel
-    transform: `rotate(${rotation}deg) skewX(${skewX}deg)`,
-    boxShadow: NEO.shadowSoft,
-    border: 'none',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'center',
-    width: 'fit-content',
-    height: 'fit-content',
-    wordBreak: 'break-word',
-    minWidth: 'auto',
-    minHeight: 'auto',
-    lineHeight: '1.1', // Tight line height
-    letterSpacing: '-0.02em', // Slightly tighter letter spacing
-  };
+  return smoothed;
 };
 
-// Generate random angle for images (horizontal default = 0)
-const generateRandomAngle = () => 0; // Default to horizontal
-
-// Handmade cut shapes for images - more variety with white sticker edges
-const getRandomImageShape = () => {
-  const shapes = [
-    // Slightly irregular rectangles with subtle variations
-    { clipPath: 'polygon(2% 0%, 100% 1%, 99% 98%, 0% 100%)', borderRadius: '4px' },
-    { clipPath: 'polygon(0% 2%, 98% 0%, 100% 99%, 1% 98%)', borderRadius: '4px' },
-    { clipPath: 'polygon(1% 1%, 99% 0%, 100% 100%, 0% 99%)', borderRadius: '6px' },
-    // Rounded corners with slight asymmetry
-    { clipPath: 'none', borderRadius: '12px 8px 14px 6px' },
-    { clipPath: 'none', borderRadius: '8px 14px 6px 12px' },
-    { clipPath: 'none', borderRadius: '16px 10px 18px 8px' },
-    // Torn paper edge effect (subtle)
-    { clipPath: 'polygon(0% 3%, 25% 0%, 50% 2%, 75% 0%, 100% 3%, 100% 97%, 75% 100%, 50% 98%, 25% 100%, 0% 97%)', borderRadius: '2px' },
-    // Diagonal cut corners
-    { clipPath: 'polygon(8% 0%, 100% 0%, 100% 92%, 92% 100%, 0% 100%, 0% 8%)', borderRadius: '0px' },
-    // Wavy edges
-    { clipPath: 'polygon(0% 5%, 10% 0%, 25% 4%, 40% 0%, 55% 3%, 70% 0%, 85% 4%, 100% 0%, 100% 95%, 90% 100%, 75% 96%, 60% 100%, 45% 97%, 30% 100%, 15% 96%, 0% 100%)', borderRadius: '0px' },
-    // Simple rounded
-    { clipPath: 'none', borderRadius: '20px' },
-  ];
-  return shapes[Math.floor(Math.random() * shapes.length)];
-};
-
-const getRandomTexture = () => {
-  const filters = ['contrast(1.5) brightness(1.1)', 'grayscale(1) contrast(1.3)', 'sepia(0.5)', 'brightness(0.9) contrast(1.5)', 'hue-rotate(90deg)'];
-  return filters[Math.floor(Math.random() * filters.length)];
-};
-
+// ============================================================================
+// MAIN APP
+// ============================================================================
 export default function App() {
-  // ===== VIEWPORT STATE =====
-  const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
-  const [isAnimating, setIsAnimating] = useState(false);
-  
-  // ===== ELEMENTS STATE =====
-  const [elements, setElements] = useState([
-    { 
-      id: '1', 
-      type: 'image', 
-      content: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=400', 
-      x: 0, 
-      y: 0, 
-      width: 220, 
-      height: null, 
-      rotation: 0, // Horizontal by default
-      creator: 'Ruoz', 
-      avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Ruoz', 
-      reactions: { '❤️': ['Ruoz', 'Gong'] }, 
-      isLocked: false, 
-      texture: 'none', 
-      shape: getRandomImageShape(),
-      scale: 1,
-      zIndex: 1
-    },
-  ]);
-
-  // ===== OTHER STATE =====
-  const [history, setHistory] = useState([]);
-  const [connections, setConnections] = useState([]);
-  const [comments, setComments] = useState([]); // Canvas comments at any position
-  const [selectedId, setSelectedId] = useState(null);
-  const [activeTool, setActiveTool] = useState(null);
-  const [activeTab, setActiveTab] = useState('public');
-  const [draggedFromDrawer, setDraggedFromDrawer] = useState(null);
-  const [connectFrom, setConnectFrom] = useState(null);
-  const [clipboard, setClipboard] = useState(null);
-  const [editingConnectionId, setEditingConnectionId] = useState(null);
-  const [interactionState, setInteractionState] = useState('idle');
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [editingTextId, setEditingTextId] = useState(null);
-  const [contextMenu, setContextMenu] = useState(null); // {x, y, elementId?}
-  const [newCommentPosition, setNewCommentPosition] = useState(null); // {x, y}
-  const [newCommentText, setNewCommentText] = useState('');
-  const [maxZIndex, setMaxZIndex] = useState(1);
-
-  const [textInput, setTextInput] = useState('New Idea...');
-  const [previewTextStyle, setPreviewTextStyle] = useState(generateMagazineStyle());
-
-  // Store random angles for drawer items
-  const [drawerImageAngles, setDrawerImageAngles] = useState({});
-  const [drawerStickerAngles, setDrawerStickerAngles] = useState({});
-
-  const [picturePool, setPicturePool] = useState({
-    public: [{ id: 'p1', url: 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?w=400' }, { id: 'p2', url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=400' }],
-    private: [{ id: 'pr1', url: 'https://images.unsplash.com/photo-1515405299443-f71bb768a69e?w=400' }]
-  });
-
-  // Initialize random angles for drawer items
-  useEffect(() => {
-    const newImageAngles = {};
-    [...picturePool.public, ...picturePool.private].forEach(img => {
-      if (!drawerImageAngles[img.id]) {
-        newImageAngles[img.id] = (Math.random() - 0.5) * 8;
-      }
-    });
-    if (Object.keys(newImageAngles).length > 0) {
-      setDrawerImageAngles(prev => ({ ...prev, ...newImageAngles }));
-    }
-  }, [picturePool]);
-
-  useEffect(() => {
-    const stickers = ['✨', '☁️', '🔥', '🦋', '🍭', '🎈', '💡', '🚀', '🌈'];
-    const newAngles = {};
-    stickers.forEach(s => {
-      if (!drawerStickerAngles[s]) {
-        newAngles[s] = (Math.random() - 0.5) * 12;
-      }
-    });
-    if (Object.keys(newAngles).length > 0) {
-      setDrawerStickerAngles(prev => ({ ...prev, ...newAngles }));
-    }
-  }, []);
-
-  // ===== REFS =====
+  // Refs
   const viewportRef = useRef(null);
   const fileInputRef = useRef(null);
   const connectionInputRef = useRef(null);
   const editTextRef = useRef(null);
   const newCommentRef = useRef(null);
+  const editCommentInputRef = useRef(null);
   const dragRef = useRef({ id: null, type: null, startX: 0, startY: 0, initialX: 0, initialY: 0, initialW: 0, initialRot: 0, initialScale: 1, initialViewport: { x: 0, y: 0 } });
 
+  // Core State
+  const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [elements, setElements] = useState(INITIAL_ELEMENTS);
+  const [history, setHistory] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [comments, setComments] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [maxZIndex, setMaxZIndex] = useState(1);
+
+  // UI State
+  const [activeTool, setActiveTool] = useState(null);
+  const [activeTab, setActiveTab] = useState('public');
+  const [interactionState, setInteractionState] = useState('idle');
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [draggedFromDrawer, setDraggedFromDrawer] = useState(null);
+  const [connectFrom, setConnectFrom] = useState(null);
+  const [clipboard, setClipboard] = useState(null);
+  const [editingConnectionId, setEditingConnectionId] = useState(null);
+  const [editingTextId, setEditingTextId] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
+  const [newCommentTargetId, setNewCommentTargetId] = useState(null);
+  const [newCommentText, setNewCommentText] = useState('');
+  
+  // Comment Edit State
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  
+  // Lasso State
+  const [lassoState, setLassoState] = useState({ active: false, isDrawing: false, elementId: null, points: [] });
+
+  // Text Drawer State
+  const [textInput, setTextInput] = useState('New Idea...');
+  // Initialize with a random style
+  const [previewTextStyle, setPreviewTextStyle] = useState(generateMagazineStyle()); 
+  const [picturePool, setPicturePool] = useState(INITIAL_PICTURE_POOL);
+  const [drawerImageAngles, setDrawerImageAngles] = useState({});
+  const [drawerStickerAngles, setDrawerStickerAngles] = useState({});
+
+  // Computed
   const wordCount = useMemo(() => textInput.trim() ? textInput.trim().split(/\s+/).length : 0, [textInput]);
+  const sortedElements = useMemo(() => [...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)), [elements]);
 
-  // ===== COMPUTED: Bounds of all elements =====
-  const elementsBounds = useMemo(() => {
-    if (elements.length === 0) return { minX: -500, maxX: 500, minY: -500, maxY: 500 };
-    const padding = 200;
-    return {
-      minX: Math.min(...elements.map(el => el.x)) - padding,
-      maxX: Math.max(...elements.map(el => el.x + (el.width || 220))) + padding,
-      minY: Math.min(...elements.map(el => el.y)) - padding,
-      maxY: Math.max(...elements.map(el => el.y + 300)) + padding,
-    };
-  }, [elements]);
+  // ===== HELPERS =====
+  const getWorldCoords = useCallback((sx, sy) => screenToWorld(sx, sy, viewport, viewportRef.current?.getBoundingClientRect()), [viewport]);
+  const saveHistory = useCallback(() => setHistory(prev => [...prev, JSON.parse(JSON.stringify(elements))].slice(-30)), [elements]);
 
-  // ===== COORDINATE CONVERSION =====
-  const screenToWorld = useCallback((screenX, screenY) => {
-    const rect = viewportRef.current?.getBoundingClientRect();
-    if (!rect) return { x: screenX, y: screenY };
-    return {
-      x: (screenX - rect.left) / viewport.scale - viewport.x,
-      y: (screenY - rect.top) / viewport.scale - viewport.y
-    };
-  }, [viewport]);
+  const updateElement = useCallback((id, updates, save = true) => {
+    if (save) saveHistory();
+    setElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el));
+  }, [saveHistory]);
 
-  // ===== HISTORY =====
-  const saveHistory = () => setHistory(prev => [...prev, JSON.parse(JSON.stringify(elements))].slice(-30));
-  const undo = () => {
-    if (history.length === 0) return;
-    setElements(history[history.length - 1]);
-    setHistory(prev => prev.slice(0, -1));
-    setSelectedId(null);
-  };
+  const addElement = useCallback((data) => {
+    saveHistory();
+    const zIndex = maxZIndex + 1;
+    setMaxZIndex(zIndex);
+    const el = { id: generateId(), creator: 'Me', avatar: getAvatarUrl('Me'), reactions: {}, isLocked: false, texture: 'none', scale: 1, zIndex, ...data };
+    setElements(prev => [...prev, el]);
+    setSelectedId(el.id);
+  }, [maxZIndex, saveHistory]);
 
-  // ===== VIEWPORT CONTROLS =====
-  const zoomIn = () => setViewport(prev => ({ ...prev, scale: Math.min(3, prev.scale * 1.2) }));
-  const zoomOut = () => setViewport(prev => ({ ...prev, scale: Math.max(0.2, prev.scale / 1.2) }));
-
-  // Animated snap to center
-  const snapToCenter = useCallback(() => {
-    const rect = viewportRef.current?.getBoundingClientRect();
-    if (!rect || elements.length === 0) {
-      setViewport({ x: 0, y: 0, scale: 1 });
-      return;
-    }
-    
-    const centerX = elements.reduce((sum, el) => sum + el.x + (el.width || 220) / 2, 0) / elements.length;
-    const centerY = elements.reduce((sum, el) => sum + el.y + 150, 0) / elements.length;
-    
-    const targetViewport = {
-      x: (rect.width / 2) / 1 - centerX,
-      y: (rect.height / 2) / 1 - centerY,
-      scale: 1
-    };
-    
-    setIsAnimating(true);
-    setViewport(targetViewport);
-    setTimeout(() => setIsAnimating(false), 400);
-  }, [elements]);
-
-  // Center viewport on mount
+  // ===== INIT EFFECTS =====
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const rect = viewportRef.current?.getBoundingClientRect();
-      if (rect) {
-        setViewport({
-          x: rect.width / 2 - 110,
-          y: rect.height / 2 - 150,
-          scale: 1
-        });
-      }
+    // Center viewport
+    const t = setTimeout(() => {
+      const r = viewportRef.current?.getBoundingClientRect();
+      if (r) setViewport({ x: r.width / 2 - 110, y: r.height / 2 - 150, scale: 1 });
     }, 100);
-    return () => clearTimeout(timer);
+    return () => clearTimeout(t);
   }, []);
 
-  // ===== KEYBOARD SHORTCUTS =====
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Don't process shortcuts when editing text
-      if (editingTextId || newCommentPosition) return;
-      
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
-      if ((e.metaKey || e.ctrlKey) && e.key === '=') { e.preventDefault(); zoomIn(); return; }
-      if ((e.metaKey || e.ctrlKey) && e.key === '-') { e.preventDefault(); zoomOut(); return; }
-      if ((e.metaKey || e.ctrlKey) && e.key === '0') { e.preventDefault(); snapToCenter(); return; }
-      
-      // Escape to close context menu
-      if (e.key === 'Escape') {
-        setContextMenu(null);
-        setNewCommentPosition(null);
-        return;
+    // Init drawer angles
+    const imgAngles = {};
+    [...picturePool.public, ...picturePool.private].forEach(i => { if (!drawerImageAngles[i.id]) imgAngles[i.id] = generateSmallRandomAngle(8); });
+    if (Object.keys(imgAngles).length) setDrawerImageAngles(prev => ({ ...prev, ...imgAngles }));
+  }, [picturePool]);
+
+  useEffect(() => {
+    const angles = {};
+    STICKER_LIST.forEach(s => { if (!drawerStickerAngles[s]) angles[s] = generateSmallRandomAngle(12); });
+    if (Object.keys(angles).length) setDrawerStickerAngles(prev => ({ ...prev, ...angles }));
+  }, []);
+
+  // ===== KEYBOARD =====
+  useEffect(() => {
+    const handle = (e) => {
+      if (editingTextId || newCommentTargetId || editingCommentId) return;
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); if (history.length) { setElements(history.at(-1)); setHistory(p => p.slice(0, -1)); setSelectedId(null); } return; }
+      if ((e.metaKey || e.ctrlKey) && e.key === '=') { e.preventDefault(); setViewport(p => ({ ...p, scale: Math.min(3, p.scale * 1.2) })); return; }
+      if ((e.metaKey || e.ctrlKey) && e.key === '-') { e.preventDefault(); setViewport(p => ({ ...p, scale: Math.max(0.2, p.scale / 1.2) })); return; }
+      if (e.key === 'Escape') { 
+        setContextMenu(null); 
+        setNewCommentTargetId(null); 
+        setEditingCommentId(null);
+        if (lassoState.active) setLassoState({ active: false, isDrawing: false, elementId: null, points: [] });
+        return; 
       }
-      
       if (!selectedId) return;
       const el = elements.find(i => i.id === selectedId);
-      if (!el || el.isLocked) return;
-      
-      if (e.key === 'Delete' || e.key === 'Backspace') { 
-        saveHistory(); 
-        setElements(prev => prev.filter(i => i.id !== selectedId)); 
-        setSelectedId(null); 
-      }
-      if ((e.metaKey || e.ctrlKey)) {
-        if (e.key === 'c') setClipboard({ ...el });
-        if (e.key === 'v' && clipboard) { 
-          saveHistory(); 
-          const nId = `cp-${Date.now()}`; 
-          const newZ = maxZIndex + 1;
-          setMaxZIndex(newZ);
-          setElements([...elements, { ...clipboard, id: nId, x: el.x + 40, y: el.y + 40, creator: 'Me', reactions: {}, zIndex: newZ }]); 
-          setSelectedId(nId); 
-        }
-      }
+      if (!el?.isLocked && (e.key === 'Delete' || e.key === 'Backspace')) { saveHistory(); setElements(p => p.filter(i => i.id !== selectedId)); setSelectedId(null); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') setClipboard({ ...el });
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v' && clipboard) { const z = maxZIndex + 1; setMaxZIndex(z); saveHistory(); setElements(p => [...p, { ...clipboard, id: generateId('cp'), x: el.x + 40, y: el.y + 40, zIndex: z }]); }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId, elements, clipboard, history, snapToCenter, editingTextId, newCommentPosition, maxZIndex]);
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+  }, [selectedId, elements, clipboard, history, editingTextId, newCommentTargetId, editingCommentId, maxZIndex, saveHistory, lassoState]);
 
-  // ===== PASTE TEXT =====
+  // ===== WHEEL ZOOM & PAN =====
   useEffect(() => {
-    const handlePaste = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      const text = e.clipboardData.getData('text');
-      if (!text) return;
+    const c = viewportRef.current;
+    if (!c) return;
+    const handle = (e) => {
+      e.preventDefault();
       
-      const words = text.trim().split(/\s+/).slice(0, 140);
-      saveHistory();
-      const centerWorld = screenToWorld(window.innerWidth / 2, window.innerHeight / 2);
-      const newZ = maxZIndex + 1;
-      setMaxZIndex(newZ);
-      
-      const newEl = {
-        id: `el-${Date.now()}`, type: 'text', content: words.join(' '),
-        x: centerWorld.x - 110, y: centerWorld.y - 70, width: 220, height: 140,
-        rotation: 0, creator: 'Me', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Me',
-        reactions: {}, isLocked: false, texture: 'none', shape: null,
-        style: generateMagazineStyle(), scale: 1, zIndex: newZ
-      };
-      setElements(prev => [...prev, newEl]);
-      setSelectedId(newEl.id);
-    };
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [screenToWorld, maxZIndex]);
-
-  // ===== WHEEL ZOOM =====
-  useEffect(() => {
-    const container = viewportRef.current;
-    if (!container) return;
-
-    const handleWheel = (e) => {
       if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const rect = container.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const worldBefore = { x: mouseX / viewport.scale - viewport.x, y: mouseY / viewport.scale - viewport.y };
-        const delta = e.deltaY > 0 ? 0.9 : 1.1;
-        const newScale = Math.max(0.2, Math.min(3, viewport.scale * delta));
-        setViewport({
-          x: mouseX / newScale - worldBefore.x,
-          y: mouseY / newScale - worldBefore.y,
-          scale: newScale
-        });
+        // Zoom
+        const r = c.getBoundingClientRect();
+        const mx = e.clientX - r.left, my = e.clientY - r.top;
+        const wb = { x: mx / viewport.scale - viewport.x, y: my / viewport.scale - viewport.y };
+        const ns = Math.max(0.2, Math.min(3, viewport.scale * (e.deltaY > 0 ? 0.9 : 1.1)));
+        setViewport({ x: mx / ns - wb.x, y: my / ns - wb.y, scale: ns });
+      } else {
+        // Pan
+        // Note: dividing by scale ensures the pan speed feels 1:1 with finger movement regardless of zoom level
+        setViewport(p => ({
+          ...p,
+          x: p.x - e.deltaX / p.scale,
+          y: p.y - e.deltaY / p.scale
+        }));
       }
     };
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
+    c.addEventListener('wheel', handle, { passive: false });
+    return () => c.removeEventListener('wheel', handle);
   }, [viewport]);
-
-  // ===== DROP FILES =====
-  const handleCanvasDrop = (e) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files.length === 0) return;
-    const file = files[0];
-    if (!file.type.startsWith('image/')) return;
-    
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      saveHistory();
-      const worldPos = screenToWorld(e.clientX, e.clientY);
-      const newZ = maxZIndex + 1;
-      setMaxZIndex(newZ);
-      const newEl = {
-        id: `el-${Date.now()}`, type: 'image', content: event.target.result,
-        x: worldPos.x - 110, y: worldPos.y - 100, width: 220, height: null,
-        rotation: 0, // Horizontal by default
-        creator: 'Me', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Me',
-        reactions: {}, isLocked: false, texture: 'none', shape: getRandomImageShape(), scale: 1, zIndex: newZ
-      };
-      setElements(prev => [...prev, newEl]);
-      setSelectedId(newEl.id);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ===== FILE UPLOAD =====
-  const handleFileUpload = (e) => {
-    const files = e.target.files;
-    if (!files) return;
-    Array.from(files).forEach(file => {
-      if (!file.type.startsWith('image/')) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const newId = `img-${Date.now()}-${Math.random()}`;
-        setPicturePool(prev => ({
-          ...prev,
-          [activeTab]: [...prev[activeTab], { id: newId, url: event.target.result }]
-        }));
-        setDrawerImageAngles(prev => ({ ...prev, [newId]: (Math.random() - 0.5) * 8 }));
-      };
-      reader.readAsDataURL(file);
-    });
-    e.target.value = '';
-  };
-
-  // ===== RIGHT CLICK CONTEXT MENU =====
-  const handleContextMenu = (e) => {
-    e.preventDefault();
-    const worldPos = screenToWorld(e.clientX, e.clientY);
-    setContextMenu({ x: e.clientX, y: e.clientY, worldX: worldPos.x, worldY: worldPos.y });
-  };
 
   // ===== MOUSE HANDLERS =====
   const handleCanvasMouseDown = (e) => {
-    const targetClasses = e.target.classList ? Array.from(e.target.classList) : [];
-    const isCanvasClick = e.target === viewportRef.current || e.target.classList.contains('canvas-content') || e.target.classList.contains('canvas-grid');
-    
-    if (isCanvasClick) {
-      setSelectedId(null);
-      setConnectFrom(null);
-      setEditingTextId(null);
-      setContextMenu(null);
+    // If drawing lasso, don't pan or deselect
+    if (lassoState.active && lassoState.elementId) {
+      if (e.target.closest(`#content-${lassoState.elementId}`)) {
+        setLassoState(p => ({ ...p, isDrawing: true, points: [{ x: e.clientX, y: e.clientY }] }));
+        return;
+      }
+      // Clicked outside while ready to lasso -> cancel lasso
+      setLassoState({ active: false, isDrawing: false, elementId: null, points: [] });
+    }
+
+    if (e.target === viewportRef.current || e.target.classList.contains('canvas-content') || e.target.classList.contains('canvas-grid')) {
+      setSelectedId(null); setConnectFrom(null); setEditingTextId(null); setContextMenu(null);
       dragRef.current = { id: null, type: 'pan', startX: e.clientX, startY: e.clientY, initialViewport: { x: viewport.x, y: viewport.y } };
       setInteractionState('panning');
     }
@@ -499,867 +255,338 @@ export default function App() {
 
   const handleElementMouseDown = (e, id, type) => {
     e.stopPropagation();
-    const el = elements.find(i => i.id === id);
     
+    // Lasso Mode Check
+    if (lassoState.active) {
+      if (lassoState.elementId === id) {
+        setLassoState(p => ({ ...p, isDrawing: true, points: [{ x: e.clientX, y: e.clientY }] }));
+      } else {
+        // Clicked another element -> cancel lasso
+        setLassoState({ active: false, isDrawing: false, elementId: null, points: [] });
+      }
+      return;
+    }
+
+    const el = elements.find(i => i.id === id);
     if (activeTool === 'connect') {
-      if (!connectFrom) {
-        setConnectFrom(id);
-        setSelectedId(id);
-      } else if (connectFrom !== id) {
-        const newConnId = `cn-${Date.now()}`;
-        setConnections([...connections, { id: newConnId, from: connectFrom, to: id, text: '', labelOffset: 0.5, labelAngle: 0 }]);
-        setConnectFrom(null);
-        setEditingConnectionId(newConnId);
-        // Auto-exit connection mode after connection is made
-        setActiveTool(null);
+      if (!connectFrom) { setConnectFrom(id); setSelectedId(id); }
+      else if (connectFrom !== id) {
+        const cid = generateId('cn');
+        setConnections(p => [...p, { id: cid, from: connectFrom, to: id, text: '' }]);
+        setConnectFrom(null); setEditingConnectionId(cid); setActiveTool(null);
         setTimeout(() => connectionInputRef.current?.focus(), 100);
       }
       return;
     }
-    
     if (el.isLocked && (type === 'move' || type.startsWith('resize') || type === 'rotate')) return;
     if (type !== 'move') saveHistory();
     setSelectedId(id);
-    
     const node = document.getElementById(`content-${id}`);
     const rect = node?.getBoundingClientRect();
-    dragRef.current = {
-      id, type, startX: e.clientX, startY: e.clientY,
-      initialX: el.x, initialY: el.y, initialW: el.width,
-      initialRot: el.rotation, initialScale: el.scale || 1,
-      centerX: rect ? rect.left + rect.width / 2 : 0,
-      centerY: rect ? rect.top + rect.height / 2 : 0
+    const centerX = rect ? rect.left + rect.width / 2 : 0;
+    const centerY = rect ? rect.top + rect.height / 2 : 0;
+    const initialDist = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2));
+
+    dragRef.current = { 
+      id, type, startX: e.clientX, startY: e.clientY, 
+      initialX: el.x, initialY: el.y, initialW: el.width, 
+      initialRot: el.rotation, initialScale: el.scale || 1, 
+      centerX, centerY, initialDist
     };
     setInteractionState(type === 'move' ? 'dragging' : type.startsWith('resize') ? 'resizing' : 'rotating');
   };
 
   const handleMouseMove = (e) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
-    
-    if (draggedFromDrawer) {
-      setDraggedFromDrawer({ ...draggedFromDrawer, x: e.clientX, y: e.clientY });
+
+    // Lasso Drawing
+    if (lassoState.isDrawing) {
+      setLassoState(p => ({ ...p, points: [...p.points, { x: e.clientX, y: e.clientY }] }));
       return;
     }
+
+    if (draggedFromDrawer) { setDraggedFromDrawer({ ...draggedFromDrawer, x: e.clientX, y: e.clientY }); return; }
     if (interactionState === 'idle') return;
-    
-    const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
-    
-    if (interactionState === 'panning') {
-      setViewport(prev => ({
-        ...prev,
-        x: dragRef.current.initialViewport.x + dx / prev.scale,
-        y: dragRef.current.initialViewport.y + dy / prev.scale
-      }));
-    } else if (interactionState === 'dragging') {
-      const { id, initialX, initialY } = dragRef.current;
-      const newX = initialX + dx / viewport.scale;
-      const newY = initialY + dy / viewport.scale;
-      updateEl(id, { x: newX, y: newY }, false);
-      
-      const rect = viewportRef.current?.getBoundingClientRect();
-      if (rect) {
-        const edgeThreshold = 100;
-        const panSpeed = 10 / viewport.scale;
-        let panX = 0, panY = 0;
-        if (e.clientX - rect.left < edgeThreshold) panX = panSpeed;
-        if (rect.right - e.clientX < edgeThreshold) panX = -panSpeed;
-        if (e.clientY - rect.top < edgeThreshold) panY = panSpeed;
-        if (rect.bottom - e.clientY < edgeThreshold) panY = -panSpeed;
-        if (panX || panY) {
-          setViewport(prev => ({ ...prev, x: prev.x + panX, y: prev.y + panY }));
-        }
-      }
-    } else if (interactionState === 'resizing') {
-      const { id, initialW, initialScale } = dragRef.current;
+    const dx = e.clientX - dragRef.current.startX, dy = e.clientY - dragRef.current.startY;
+    if (interactionState === 'panning') setViewport(p => ({ ...p, x: dragRef.current.initialViewport.x + dx / p.scale, y: dragRef.current.initialViewport.y + dy / p.scale }));
+    else if (interactionState === 'dragging') updateElement(dragRef.current.id, { x: dragRef.current.initialX + dx / viewport.scale, y: dragRef.current.initialY + dy / viewport.scale }, false);
+    else if (interactionState === 'resizing') {
+      const { id, initialW, initialScale, centerX, centerY, initialDist } = dragRef.current;
       const el = elements.find(i => i.id === id);
-      if (el?.type === 'text') {
-        updateEl(id, { scale: Math.max(0.5, initialScale + dx / 200) }, false);
-      } else {
-        updateEl(id, { width: Math.max(80, initialW + dx / viewport.scale) }, false);
-      }
-    } else if (interactionState === 'rotating') {
+      if (!el || initialDist === 0) return;
+
+      const currentDist = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2));
+      const ratio = currentDist / initialDist;
+
+      if (el.type === 'text') updateElement(id, { scale: Math.max(0.5, initialScale * ratio) }, false);
+      else updateElement(id, { width: Math.max(80, initialW * ratio) }, false);
+    }
+    else if (interactionState === 'rotating') {
       const { id, startX, startY, initialRot, centerX, centerY } = dragRef.current;
       const curA = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
       const strA = Math.atan2(startY - centerY, startX - centerX) * (180 / Math.PI);
-      updateEl(id, { rotation: initialRot + (curA - strA) }, false);
+      updateElement(id, { rotation: initialRot + (curA - strA) }, false);
     }
   };
 
   const handleMouseUp = (e) => {
-    if (draggedFromDrawer) {
-      saveHistory();
-      const worldPos = screenToWorld(e.clientX, e.clientY);
-      const newZ = maxZIndex + 1;
-      setMaxZIndex(newZ);
-      const newEl = {
-        id: `el-${Date.now()}`, type: draggedFromDrawer.type,
-        content: draggedFromDrawer.type === 'image' ? draggedFromDrawer.data.url : (draggedFromDrawer.type === 'sticker' ? draggedFromDrawer.data : textInput),
-        x: worldPos.x - 110, y: worldPos.y - 100,
-        width: 220, height: draggedFromDrawer.type === 'text' ? 140 : null,
-        rotation: 0, // Horizontal by default
-        creator: 'Me', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Me',
-        reactions: {}, isLocked: false, texture: 'none', 
-        shape: draggedFromDrawer.type === 'image' ? getRandomImageShape() : null,
-        style: draggedFromDrawer.type === 'text' ? { ...previewTextStyle } : {}, 
-        scale: 1,
-        zIndex: newZ
-      };
-      setElements([...elements, newEl]);
-      if (draggedFromDrawer.type === 'image') {
-        setPicturePool({ ...picturePool, [activeTab]: picturePool[activeTab].filter(i => i.id !== draggedFromDrawer.data.id) });
+    // Finish Lasso
+    if (lassoState.isDrawing) {
+      const { elementId, points } = lassoState;
+      const el = elements.find(i => i.id === elementId);
+      const node = document.getElementById(`content-${elementId}`);
+      
+      // Apply smoothing before processing
+      const smoothedPoints = simplifyPoints(points);
+      
+      if (el && node && smoothedPoints.length > 3) {
+        const rect = node.getBoundingClientRect();
+        const w = node.offsetWidth;
+        const h = node.offsetHeight;
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const rad = -el.rotation * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        const polygonPoints = smoothedPoints.map(p => {
+          const dx = p.x - cx;
+          const dy = p.y - cy;
+          // Rotate point back to element local space
+          const rx = dx * cos - dy * sin;
+          const ry = dx * sin + dy * cos;
+          // Convert to percentage
+          const pctX = ((rx + w / 2) / w) * 100;
+          const pctY = ((ry + h / 2) / h) * 100;
+          return `${Math.max(0, Math.min(100, pctX))}% ${Math.max(0, Math.min(100, pctY))}%`;
+        });
+        
+        updateElement(elementId, { 
+          shape: { 
+            clipPath: `polygon(${polygonPoints.join(', ')})`,
+            borderRadius: '0px'
+          } 
+        });
       }
-      setSelectedId(newEl.id);
+      setLassoState({ active: false, isDrawing: false, elementId: null, points: [] });
+      return;
+    }
+
+    if (draggedFromDrawer) {
+      const wp = getWorldCoords(e.clientX, e.clientY);
+      addElement({
+        type: draggedFromDrawer.type,
+        content: draggedFromDrawer.type === 'image' ? draggedFromDrawer.data.url : draggedFromDrawer.type === 'sticker' ? draggedFromDrawer.data : textInput,
+        x: wp.x - 110, y: wp.y - 100, width: DEFAULT_ELEMENT_WIDTH,
+        height: draggedFromDrawer.type === 'text' ? 140 : null, rotation: 0,
+        shape: null,
+        style: draggedFromDrawer.type === 'text' ? { ...previewTextStyle } : {},
+      });
+      if (draggedFromDrawer.type === 'image') setPicturePool(p => ({ ...p, [activeTab]: p[activeTab].filter(i => i.id !== draggedFromDrawer.data.id) }));
       setDraggedFromDrawer(null);
     }
     setInteractionState('idle');
     dragRef.current = { id: null, type: null };
   };
 
-  // ===== ELEMENT OPERATIONS =====
-  const updateEl = (id, updates, shouldSave = true) => {
-    if (shouldSave) saveHistory();
-    setElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el));
-  };
-
-  const duplicate = (el) => {
-    saveHistory();
-    const newZ = maxZIndex + 1;
-    setMaxZIndex(newZ);
-    const newEl = { ...JSON.parse(JSON.stringify(el)), id: `dp-${Date.now()}`, x: el.x + 40, y: el.y + 40, creator: 'Me', reactions: {}, zIndex: newZ };
-    setElements([...elements, newEl]);
-    setSelectedId(newEl.id);
-  };
-
-  const deleteElement = (el) => {
-    if (el.isLocked) return;
-    saveHistory();
-    setElements(elements.filter(i => i.id !== el.id));
-    setSelectedId(null);
-  };
-
-  const toggleLock = (el) => updateEl(el.id, { isLocked: !el.isLocked });
-
-  // Move element up a layer
-  const moveUpLayer = (el) => {
-    const newZ = maxZIndex + 1;
-    setMaxZIndex(newZ);
-    updateEl(el.id, { zIndex: newZ });
-  };
-
-  // Add comment at canvas position
-  const addCanvasComment = () => {
-    if (!newCommentText.trim() || !newCommentPosition) return;
-    setComments([...comments, {
-      id: `c-${Date.now()}`,
-      x: newCommentPosition.x,
-      y: newCommentPosition.y,
-      author: 'Me',
-      avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Me',
-      text: newCommentText.trim()
-    }]);
-    setNewCommentPosition(null);
-    setNewCommentText('');
-    setContextMenu(null);
+  // ===== CONTEXT MENU & COMMENTS =====
+  const handleContextMenu = (e, elementId) => {
+    e.preventDefault();
+    if (!elementId) return; // Only allow context menu on elements
+    setContextMenu({ 
+      x: e.clientX, 
+      y: e.clientY, 
+      targetId: elementId 
+    });
   };
 
   const startAddingComment = () => {
-    if (contextMenu) {
-      setNewCommentPosition({ x: contextMenu.worldX, y: contextMenu.worldY });
+    if (contextMenu && contextMenu.targetId) {
+      setNewCommentTargetId(contextMenu.targetId);
       setNewCommentText('');
       setContextMenu(null);
       setTimeout(() => newCommentRef.current?.focus(), 100);
     }
   };
 
-  const startEditingText = (el) => {
-    if (el.isLocked) return;
-    setEditingTextId(el.id);
-    setTimeout(() => editTextRef.current?.focus(), 100);
+  const addElementComment = () => {
+    if (!newCommentText.trim() || !newCommentTargetId) return;
+    setComments(p => [...p, {
+      id: generateId('c'),
+      targetId: newCommentTargetId,
+      author: 'Me',
+      avatar: getAvatarUrl('Me'),
+      text: newCommentText.trim(),
+      timestamp: Date.now()
+    }]);
+    setNewCommentTargetId(null);
+    setNewCommentText('');
   };
 
-  const submitTextEdit = (elId, newText) => {
-    if (newText.trim()) {
-      saveHistory();
-      updateEl(elId, { content: newText.trim() });
-    }
-    setEditingTextId(null);
+  // Comment Actions
+  const handleEditComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.text);
+    setTimeout(() => editCommentInputRef.current?.focus(), 100);
   };
 
-  // ===== MINIMAP =====
-  const minimapSize = { width: 160, height: 100 };
-  const minimapScale = useMemo(() => {
-    const worldWidth = elementsBounds.maxX - elementsBounds.minX;
-    const worldHeight = elementsBounds.maxY - elementsBounds.minY;
-    return Math.min(minimapSize.width / worldWidth, minimapSize.height / worldHeight, 0.05);
-  }, [elementsBounds]);
-
-  const handleMinimapClick = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = (e.clientX - rect.left) / minimapScale + elementsBounds.minX;
-    const clickY = (e.clientY - rect.top) / minimapScale + elementsBounds.minY;
-    
-    const viewportRect = viewportRef.current?.getBoundingClientRect();
-    if (viewportRect) {
-      setIsAnimating(true);
-      setViewport({
-        x: viewportRect.width / 2 / viewport.scale - clickX,
-        y: viewportRect.height / 2 / viewport.scale - clickY,
-        scale: viewport.scale
-      });
-      setTimeout(() => setIsAnimating(false), 400);
-    }
+  const handleSaveEditComment = () => {
+    if (!editingCommentId || !editingCommentText.trim()) return;
+    setComments(p => p.map(c => c.id === editingCommentId ? { ...c, text: editingCommentText.trim() } : c));
+    setEditingCommentId(null);
+    setEditingCommentText('');
   };
 
-  // Calculate connection line preview position
-  const getConnectionPreviewLine = () => {
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleDeleteComment = (commentId) => {
+    setComments(p => p.filter(c => c.id !== commentId));
+  };
+
+  // ===== FILE HANDLING =====
+  const handleFileUpload = (e) => {
+    Array.from(e.target.files || []).forEach(f => {
+      if (!f.type.startsWith('image/')) return;
+      const r = new FileReader();
+      r.onload = (ev) => { const id = generateId('img'); setPicturePool(p => ({ ...p, [activeTab]: [...p[activeTab], { id, url: ev.target.result }] })); setDrawerImageAngles(p => ({ ...p, [id]: generateSmallRandomAngle(8) })); };
+      r.readAsDataURL(f);
+    });
+    e.target.value = '';
+  };
+
+  const handleCanvasDrop = (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0];
+    if (!f?.type.startsWith('image/')) return;
+    const r = new FileReader();
+    r.onload = (ev) => { const wp = getWorldCoords(e.clientX, e.clientY); addElement({ type: 'image', content: ev.target.result, x: wp.x - 110, y: wp.y - 100, width: DEFAULT_ELEMENT_WIDTH, rotation: 0, shape: null }); };
+    r.readAsDataURL(f);
+  };
+
+  // ===== CONNECTION PREVIEW =====
+  const connectionPreview = useMemo(() => {
     if (!connectFrom || activeTool !== 'connect') return null;
-    const fromEl = elements.find(el => el.id === connectFrom);
-    if (!fromEl) return null;
-    
-    const rect = viewportRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    
-    const x1 = fromEl.x + (fromEl.width || 220) / 2;
-    const y1 = fromEl.y + (fromEl.type === 'image' ? 140 : 60);
-    
-    const worldMouse = screenToWorld(mousePosition.x, mousePosition.y);
-    
-    return { x1, y1, x2: worldMouse.x, y2: worldMouse.y };
-  };
+    const from = elements.find(el => el.id === connectFrom);
+    if (!from) return null;
+    const x1 = from.x + (from.width || 220) / 2, y1 = from.y + (from.type === 'image' ? 140 : 60);
+    const wp = getWorldCoords(mousePosition.x, mousePosition.y);
+    return { x1, y1, x2: wp.x, y2: wp.y };
+  }, [connectFrom, activeTool, elements, mousePosition, getWorldCoords]);
 
-  const connectionPreview = getConnectionPreviewLine();
+  // ===== TOOLBAR ACTIONS =====
+  const toolbarActions = (el) => ({
+    onUndo: () => { if (history.length) { setElements(history.at(-1)); setHistory(p => p.slice(0, -1)); setSelectedId(null); } },
+    onShuffle: () => !el.isLocked && updateElement(el.id, { style: generateMagazineStyle() }), // Re-enabled style shuffle
+    onEdit: () => !el.isLocked && setEditingTextId(el.id) && setTimeout(() => editTextRef.current?.focus(), 100),
+    onLasso: () => !el.isLocked && setLassoState({ active: true, isDrawing: false, elementId: el.id, points: [] }),
+    onReset: () => !el.isLocked && updateElement(el.id, { shape: { clipPath: 'none', borderRadius: '4px' } }),
+    onMoveUpLayer: () => { const z = maxZIndex + 1; setMaxZIndex(z); updateElement(el.id, { zIndex: z }); },
+    onDuplicate: () => { const z = maxZIndex + 1; setMaxZIndex(z); saveHistory(); setElements(p => [...p, { ...JSON.parse(JSON.stringify(el)), id: generateId('dp'), x: el.x + 40, y: el.y + 40, zIndex: z }]); },
+    onToggleLock: () => updateElement(el.id, { isLocked: !el.isLocked }),
+    onDelete: () => { if (!el.isLocked) { saveHistory(); setElements(p => p.filter(i => i.id !== el.id)); setSelectedId(null); } },
+  });
 
-  // Sort elements by zIndex for rendering
-  const sortedElements = useMemo(() => {
-    return [...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-  }, [elements]);
-
+  // ===== RENDER =====
   return (
-    <div 
-      className="flex h-screen w-full overflow-hidden select-none relative"
-      style={{ fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif', background: NEO.bg, color: NEO.ink }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onClick={() => setContextMenu(null)}
-    >
-      {/* Paper texture */}
+    <div className="flex h-screen w-full overflow-hidden select-none relative" style={{ fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif', background: NEO.bg, color: NEO.ink }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onClick={() => setContextMenu(null)}>
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[10]" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/natural-paper.png')` }} />
 
-      {/* --- Logo --- */}
-      <div className="fixed top-8 left-8 z-[150] flex items-center gap-3">
-        <div className="w-14 h-14 flex items-center justify-center" style={{ background: NEO.ink, color: NEO.bg, boxShadow: NEO.shadow, borderRadius: NEO.radiusLg }}>
-          <IconMagic />
-        </div>
-        <div className="flex flex-col">
-          <span className="font-semibold text-xs uppercase tracking-[0.2em]">CyberJam</span>
-          <span className="text-[9px] font-medium uppercase" style={{ color: NEO.inkLight }}>Symbiotic Space</span>
-        </div>
-      </div>
+      <Header />
+      <Toolbar activeTool={activeTool} onToolChange={(t) => { setActiveTool(t); setConnectFrom(null); }} />
+      
+      <ImageDrawer isOpen={activeTool === 'image'} onClose={() => setActiveTool(null)} activeTab={activeTab} onTabChange={setActiveTab} picturePool={picturePool} drawerImageAngles={drawerImageAngles} onUploadClick={() => fileInputRef.current?.click()} onImageDragStart={(img, x, y) => setDraggedFromDrawer({ type: 'image', data: img, x, y })} fileInputRef={fileInputRef} onFileUpload={handleFileUpload} />
+      <TextDrawer isOpen={activeTool === 'text'} onClose={() => setActiveTool(null)} textInput={textInput} onTextChange={setTextInput} wordCount={wordCount} previewStyle={previewTextStyle} onShuffle={() => setPreviewTextStyle(generateMagazineStyle())} onDragStart={(x, y) => setDraggedFromDrawer({ type: 'text', data: textInput, x, y })} />
+      <StickerDrawer isOpen={activeTool === 'sticker'} onClose={() => setActiveTool(null)} drawerStickerAngles={drawerStickerAngles} onStickerDragStart={(s, x, y) => setDraggedFromDrawer({ type: 'sticker', data: s, x, y })} />
 
-      {/* --- Online Users --- */}
-      <div className="fixed top-8 right-8 z-[150] flex items-center gap-4 px-4 py-2" style={{ background: NEO.surface, backdropFilter: 'blur(20px)', border: `1px solid ${NEO.border}`, boxShadow: NEO.shadow, borderRadius: NEO.radiusLg }}>
-        <div className="flex -space-x-3">
-          {[1,2,3].map(i => (
-            <div key={i} className="w-9 h-9 overflow-hidden bg-white" style={{ border: `2px solid ${NEO.bg}`, boxShadow: NEO.shadowSoft, borderRadius: '50%' }}>
-              <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${i+50}`} className="w-full h-full" />
-            </div>
-          ))}
-        </div>
-        <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: NEO.inkLight }}>+2 Online</span>
-        <div className="w-11 h-11 overflow-hidden bg-white ml-2" style={{ border: '2px solid white', boxShadow: NEO.shadow, borderRadius: '50%' }}>
-          <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Me" className="w-full h-full" />
-        </div>
-      </div>
-
-      {/* --- Left Toolbar --- */}
-      <aside onMouseDown={e => e.stopPropagation()} className="fixed top-1/2 left-8 -translate-y-1/2 flex flex-col items-center py-4 px-3 gap-2 z-[140]" style={{ background: NEO.surface, backdropFilter: 'blur(20px)', border: `1px solid ${NEO.border}`, boxShadow: NEO.shadow, borderRadius: NEO.radiusLg }}>
-        {[{ icon: IconImage, id: 'image' }, { icon: IconType, id: 'text' }, { icon: IconSmile, id: 'sticker' }, { icon: IconConnect, id: 'connect' }].map(tool => (
-          <IconButton key={tool.id} onClick={() => { 
-            setActiveTool(activeTool === tool.id ? null : tool.id); 
-            setConnectFrom(null); 
-          }} active={activeTool === tool.id}>
-            <tool.icon />
-          </IconButton>
-        ))}
-      </aside>
-
-      {/* --- Drawer --- */}
-      <div 
-        onMouseDown={e => e.stopPropagation()}
-        className={`fixed top-8 left-28 bottom-8 w-80 flex flex-col overflow-hidden transition-all duration-500 z-[130] ${activeTool && activeTool !== 'connect' ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'}`}
-        style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', border: `1px solid ${NEO.border}`, boxShadow: NEO.shadow, borderRadius: NEO.radiusLg }}
+      <main 
+        ref={viewportRef} 
+        className="flex-1 relative overflow-hidden" 
+        style={{ 
+          background: '#F3F2EE', 
+          cursor: lassoState.active ? 'crosshair' : (interactionState === 'panning' ? 'grabbing' : 'grab') 
+        }} 
+        onMouseDown={handleCanvasMouseDown} 
+        onContextMenu={(e) => handleContextMenu(e, null)}
+        onDrop={handleCanvasDrop} 
+        onDragOver={e => e.preventDefault()}
       >
-        {/* Header with title for ALL drawers */}
-        <div className="p-6 pb-4 flex items-center justify-between border-b" style={{ borderColor: NEO.accent }}>
-          <h2 className="text-[11px] uppercase font-semibold tracking-widest" style={{ color: NEO.ink }}>{activeTool}</h2>
-          <IconButton onClick={() => setActiveTool(null)}><span style={{ fontSize: 16 }}>✕</span></IconButton>
-        </div>
-        
-        {/* Tabs for image drawer - stacked below header */}
-        {activeTool === 'image' && (
-          <div className="flex mx-6 mt-4 p-1" style={{ background: NEO.accent, borderRadius: NEO.radiusSm }}>
-            <button 
-              onClick={() => setActiveTab('public')} 
-              className="flex-1 py-2.5 text-[10px] font-semibold uppercase tracking-widest transition-all"
-              style={{ 
-                background: activeTab === 'public' ? 'white' : 'transparent', 
-                color: activeTab === 'public' ? NEO.ink : NEO.inkLight,
-                borderRadius: NEO.radiusSm,
-                boxShadow: activeTab === 'public' ? NEO.shadowSoft : 'none'
-              }}
-            >
-              Public
-            </button>
-            <button 
-              onClick={() => setActiveTab('private')} 
-              className="flex-1 py-2.5 text-[10px] font-semibold uppercase tracking-widest transition-all"
-              style={{ 
-                background: activeTab === 'private' ? 'white' : 'transparent', 
-                color: activeTab === 'private' ? NEO.ink : NEO.inkLight,
-                borderRadius: NEO.radiusSm,
-                boxShadow: activeTab === 'private' ? NEO.shadowSoft : 'none'
-              }}
-            >
-              Private
-            </button>
-          </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
-          {activeTool === 'image' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div onClick={() => fileInputRef.current?.click()} className="aspect-[3/4] border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105 bg-white" style={{ borderColor: NEO.accent, color: NEO.inkLight, borderRadius: NEO.radius }}>
-                <IconUpload />
-                <span className="mt-2 text-[8px] font-semibold uppercase">upload images</span>
-              </div>
-              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
-              {picturePool[activeTab].map(img => (
-                <div 
-                  key={img.id} 
-                  onMouseDown={(e) => { e.stopPropagation(); setDraggedFromDrawer({ type: 'image', data: img, x: e.clientX, y: e.clientY }); }} 
-                  className="aspect-[3/4] overflow-hidden cursor-grab active:scale-95 transition-all"
-                  style={{ 
-                    boxShadow: NEO.shadow,
-                    transform: `rotate(${drawerImageAngles[img.id] || 0}deg)`,
-                    borderRadius: NEO.radius,
-                    // White sticker edge
-                    padding: '4px',
-                    background: 'white'
-                  }}
-                >
-                  <img src={img.url} className="w-full h-full object-cover pointer-events-none" style={{ borderRadius: NEO.radiusSm }} />
-                </div>
-              ))}
-            </div>
-          )}
-          {activeTool === 'text' && (
-            <div className="flex flex-col gap-6">
-              <div className="relative">
-                <textarea value={textInput} onChange={(e) => { if(e.target.value.trim().split(/\s+/).length <= 140) setTextInput(e.target.value); }} className="w-full p-4 text-xs italic outline-none" style={{ background: NEO.bg, border: `1px solid ${NEO.accent}`, color: NEO.ink, borderRadius: NEO.radius }} rows="4" />
-                <div className={`absolute bottom-3 right-4 text-[9px] font-semibold ${wordCount >= 130 ? 'text-rose-400' : ''}`} style={{ color: wordCount >= 130 ? undefined : NEO.inkLight }}>{wordCount}/140</div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: NEO.inkLight }}>Preview</span>
-                <button onClick={() => setPreviewTextStyle(generateMagazineStyle())} className="w-12 h-12 flex items-center justify-center text-lg" style={{ background: NEO.ink, color: NEO.bg, boxShadow: NEO.shadow, borderRadius: '50%' }}>🎲</button>
-              </div>
-              <div onMouseDown={(e) => { e.stopPropagation(); setDraggedFromDrawer({ type: 'text', data: textInput, x: e.clientX, y: e.clientY }); }} className="flex justify-center p-4 cursor-grab hover:scale-105 transition-transform">
-                <div style={{...previewTextStyle, transform: 'none', fontSize: `${previewTextStyle.fontSize}px`}}>{textInput || "Start typing..."}</div>
-              </div>
-            </div>
-          )}
-          {activeTool === 'sticker' && (
-            <div className="grid grid-cols-3 gap-3">
-              {['✨', '☁️', '🔥', '🦋', '🍭', '🎈', '💡', '🚀', '🌈'].map(s => (
-                <div 
-                  key={s} 
-                  onMouseDown={(e) => { e.stopPropagation(); setDraggedFromDrawer({ type: 'sticker', data: s, x: e.clientX, y: e.clientY }); }} 
-                  className="aspect-square flex items-center justify-center text-3xl cursor-grab transition-all hover:scale-110"
-                  style={{ 
-                    background: 'transparent',
-                    transform: `rotate(${drawerStickerAngles[s] || 0}deg)`,
-                    filter: 'drop-shadow(0 0 0 white) drop-shadow(2px 2px 0px white) drop-shadow(-2px -2px 0px white) drop-shadow(2px -2px 0px white) drop-shadow(-2px 2px 0px white)'
-                  }}
-                >
-                  {s}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ===== INFINITE CANVAS ===== */}
-      <main
-        ref={viewportRef}
-        className="flex-1 relative overflow-hidden"
-        style={{ background: '#F3F2EE', cursor: interactionState === 'panning' ? 'grabbing' : 'grab' }}
-        onMouseDown={handleCanvasMouseDown}
-        onContextMenu={handleContextMenu}
-        onDrop={handleCanvasDrop}
-        onDragOver={(e) => e.preventDefault()}
-      >
-        {/* Dot grid */}
-        <div 
-          className="canvas-grid absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(circle, ${NEO.accent} 1px, transparent 1px)`,
-            backgroundSize: `${30 * viewport.scale}px ${30 * viewport.scale}px`,
-            backgroundPosition: `${viewport.x * viewport.scale}px ${viewport.y * viewport.scale}px`,
-            opacity: 0.6
-          }}
-        />
-        
-        {/* Canvas content */}
-        <div
-          className="canvas-content absolute"
-          style={{
-            transformOrigin: '0 0',
-            transform: `scale(${viewport.scale}) translate(${viewport.x}px, ${viewport.y}px)`,
-            transition: isAnimating ? 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
-            willChange: 'transform'
-          }}
-        >
-          {/* Connections + Preview Line */}
+        <div className="canvas-grid absolute inset-0 pointer-events-none" style={{ backgroundImage: `radial-gradient(circle, ${NEO.accent} 1px, transparent 1px)`, backgroundSize: `${30 * viewport.scale}px ${30 * viewport.scale}px`, backgroundPosition: `${viewport.x * viewport.scale}px ${viewport.y * viewport.scale}px`, opacity: 0.6 }} />
+        <div className="canvas-content absolute" style={{ transformOrigin: '0 0', transform: `scale(${viewport.scale}) translate(${viewport.x}px, ${viewport.y}px)`, transition: isAnimating ? 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' : 'none' }}>
           <svg className="absolute overflow-visible pointer-events-none" style={{ width: 1, height: 1 }}>
-            {/* Connection preview line when connecting */}
-            {connectionPreview && activeTool === 'connect' && (
-              <g>
-                <path 
-                  d={`M ${connectionPreview.x1} ${connectionPreview.y1} C ${connectionPreview.x1} ${(connectionPreview.y1 + connectionPreview.y2) / 2}, ${connectionPreview.x2} ${(connectionPreview.y1 + connectionPreview.y2) / 2}, ${connectionPreview.x2} ${connectionPreview.y2}`} 
-                  stroke="#C4C4BE" 
-                  strokeWidth={2} 
-                  strokeDasharray="6 4" 
-                  fill="none" 
-                />
-                <circle cx={connectionPreview.x1} cy={connectionPreview.y1} r="6" fill="#C4C4BE" />
-                <circle cx={connectionPreview.x2} cy={connectionPreview.y2} r="6" fill="#C4C4BE" stroke="white" strokeWidth="2" />
-              </g>
-            )}
-            
-            {connections.map(conn => {
-              const from = elements.find(el => el.id === conn.from);
-              const to = elements.find(el => el.id === conn.to);
-              if (!from || !to) return null;
-              const x1 = from.x + (from.width||220)/2, y1 = from.y + (from.type==='image'?140:60);
-              const x2 = to.x + (to.width||220)/2, y2 = to.y + (to.type==='image'?140:60);
-              const midX = (x1+x2)/2, midY = (y1+y2)/2;
-              const isEditing = editingConnectionId === conn.id;
-              
-              return (
-                <g key={conn.id} className="pointer-events-auto">
-                  <path d={`M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`} stroke="#C4C4BE" strokeWidth={2} strokeDasharray="6 4" fill="none" />
-                  {/* Double arrows */}
-                  <polygon points={`${x1-4},${y1+8} ${x1},${y1} ${x1+4},${y1+8}`} fill="#C4C4BE" />
-                  <polygon points={`${x2-4},${y2-8} ${x2},${y2} ${x2+4},${y2-8}`} fill="#C4C4BE" />
-                  
-                  {/* Frosted glass label container - horizontal for readability */}
-                  <foreignObject x={midX - 100} y={midY - 18} width="200" height="36">
-                    <div 
-                      style={{ 
-                        display: 'flex', 
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        height: '100%'
-                      }}
-                    >
-                      <div
-                        style={{
-                          background: NEO.frosted,
-                          backdropFilter: 'blur(12px)',
-                          borderRadius: NEO.radiusSm,
-                          boxShadow: NEO.shadowSoft,
-                          border: `1px solid ${NEO.border}`,
-                          padding: '4px 12px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                        }}
-                        onMouseDown={e => e.stopPropagation()}
-                      >
-                        <input 
-                          ref={isEditing ? connectionInputRef : null}
-                          onMouseDown={e => e.stopPropagation()}
-                          onClick={(e) => { e.stopPropagation(); setEditingConnectionId(conn.id); }}
-                          onBlur={() => setEditingConnectionId(null)}
-                          placeholder="describe..."
-                          maxLength={50}
-                          className={`bg-transparent text-[11px] text-center italic outline-none font-medium ${isEditing ? 'caret-animate' : ''}`}
-                          style={{ 
-                            color: NEO.ink,
-                            width: conn.text ? `${Math.min(conn.text.length * 7 + 20, 180)}px` : '80px',
-                            minWidth: '60px',
-                            maxWidth: '180px'
-                          }}
-                          value={conn.text}
-                          onChange={(e) => {
-                            const text = e.target.value.slice(0, 50);
-                            setConnections(prev => prev.map(c => c.id === conn.id ? {...c, text} : c));
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </foreignObject>
-                </g>
-              );
-            })}
+            {connectionPreview && <ConnectionPreview {...connectionPreview} />}
+            {connections.map(c => <Connection key={c.id} connection={c} fromElement={elements.find(e => e.id === c.from)} toElement={elements.find(e => e.id === c.to)} isEditing={editingConnectionId === c.id} inputRef={connectionInputRef} onEdit={setEditingConnectionId} onBlur={() => setEditingConnectionId(null)} onChange={(id, text) => setConnections(p => p.map(x => x.id === id ? { ...x, text } : x))} />)}
           </svg>
-
-          {/* Canvas Comments */}
-          {comments.map(comment => (
-            <div
-              key={comment.id}
-              className="absolute pointer-events-auto animate-popIn"
-              style={{ left: comment.x, top: comment.y, zIndex: 50 }}
-              onMouseDown={e => e.stopPropagation()}
-            >
-              <div className="flex gap-2 max-w-[280px]">
-                <div className="w-8 h-8 shrink-0 overflow-hidden bg-white" style={{ border: '2px solid white', boxShadow: NEO.shadowSoft, borderRadius: '50%' }}>
-                  <img src={comment.avatar} className="w-full h-full" />
-                </div>
-                <div className="p-3 bg-white flex-1" style={{ borderRadius: NEO.radius, boxShadow: NEO.shadow, border: `1px solid ${NEO.border}` }}>
-                  <span className="text-[9px] font-semibold uppercase block mb-1" style={{ color: NEO.inkLight }}>{comment.author}</span>
-                  <p className="text-[11px] leading-relaxed" style={{ color: NEO.ink }}>{comment.text}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {/* New comment input at position */}
-          {newCommentPosition && (
-            <div
-              className="absolute pointer-events-auto animate-popIn"
-              style={{ left: newCommentPosition.x, top: newCommentPosition.y, zIndex: 200 }}
-              onMouseDown={e => e.stopPropagation()}
-            >
-              <div className="flex gap-2 max-w-[300px]">
-                <div className="w-8 h-8 shrink-0 overflow-hidden bg-white" style={{ border: '2px solid white', boxShadow: NEO.shadowSoft, borderRadius: '50%' }}>
-                  <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Me" className="w-full h-full" />
-                </div>
-                <div className="flex-1">
-                  <textarea
-                    ref={newCommentRef}
-                    value={newCommentText}
-                    onChange={(e) => setNewCommentText(e.target.value)}
-                    onKeyDown={(e) => { 
-                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addCanvasComment(); } 
-                      if (e.key === 'Escape') { setNewCommentPosition(null); setNewCommentText(''); } 
-                    }}
-                    placeholder="Add a comment..."
-                    className="w-full p-3 text-[11px] outline-none resize-none"
-                    style={{ background: 'white', border: `1px solid ${NEO.border}`, boxShadow: NEO.shadow, color: NEO.ink, borderRadius: NEO.radius }}
-                    rows="2"
-                  />
-                  <div className="flex gap-2 mt-2">
-                    <button 
-                      onClick={addCanvasComment}
-                      className="px-4 py-1.5 text-[10px] font-semibold uppercase"
-                      style={{ background: NEO.ink, color: NEO.bg, borderRadius: NEO.radiusSm }}
-                    >
-                      Post
-                    </button>
-                    <button 
-                      onClick={() => { setNewCommentPosition(null); setNewCommentText(''); }}
-                      className="px-4 py-1.5 text-[10px] font-semibold uppercase"
-                      style={{ background: 'transparent', color: NEO.inkLight, border: `1px solid ${NEO.accent}`, borderRadius: NEO.radiusSm }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
+          
           {/* Elements */}
-          {sortedElements.map((el) => {
-            const isSelected = selectedId === el.id;
-            const scale = el.scale || 1;
-            const scaledWidth = el.type === 'text' ? (el.width || 220) * scale : (el.width || 220);
-            const scaledHeight = el.type === 'text' ? (el.height || 140) * scale : (el.type === 'image' ? 'auto' : (el.width || 220) * 0.65);
-            const isEditingThisText = editingTextId === el.id;
-            
-            return (
-              <div key={el.id} className="absolute" style={{ left: el.x, top: el.y, zIndex: isSelected ? 100 : (el.zIndex || 20) }}>
-                
-                {/* Toolbar above element - only when selected */}
-                {isSelected && (
-                  <div className="absolute flex items-start gap-2 pointer-events-auto z-[110]" style={{ left: 0, bottom: `calc(100% + 12px)` }} onMouseDown={e => e.stopPropagation()}>
-                    <div className="w-10 h-10 overflow-hidden bg-white" style={{ border: '2px solid white', boxShadow: NEO.shadow, borderRadius: '50%' }}>
-                      <img src={el.avatar} className="w-full h-full" />
-                    </div>
-                    <div className="flex items-center gap-0.5 px-1.5 py-1" style={{ background: NEO.surface, backdropFilter: 'blur(20px)', border: `1px solid ${NEO.border}`, boxShadow: NEO.shadow, borderRadius: NEO.radiusLg }}>
-                      <IconButton onClick={undo} title="Undo"><IconUndo /></IconButton>
-                      
-                      {el.type === 'text' && (
-                        <>
-                          <IconButton onClick={() => !el.isLocked && updateEl(el.id, { style: generateMagazineStyle() })} title="Shuffle" disabled={el.isLocked}><IconShuffle /></IconButton>
-                          <IconButton onClick={() => startEditingText(el)} title="Edit" disabled={el.isLocked}><IconEdit /></IconButton>
-                        </>
-                      )}
-                      {el.type === 'image' && (
-                        <>
-                          <IconButton onClick={() => !el.isLocked && updateEl(el.id, { texture: getRandomTexture() })} title="Filter" disabled={el.isLocked}><IconMagic /></IconButton>
-                          <IconButton onClick={() => !el.isLocked && updateEl(el.id, { shape: getRandomImageShape() })} title="Shape" disabled={el.isLocked}><IconScissors /></IconButton>
-                          <IconButton onClick={() => !el.isLocked && updateEl(el.id, { texture: 'none', shape: { clipPath: 'none', borderRadius: '4px' } })} title="Reset" disabled={el.isLocked}><IconCrop /></IconButton>
-                        </>
-                      )}
-                      
-                      {/* Move up layer button */}
-                      <IconButton onClick={() => moveUpLayer(el)} title="Move Up Layer"><IconChevronUp /></IconButton>
-                      
-                      <IconButton onClick={() => duplicate(el)} title="Duplicate"><IconCopy /></IconButton>
-                      <IconButton onClick={() => toggleLock(el)} title={el.isLocked ? "Unlock" : "Lock"} active={el.isLocked}>{el.isLocked ? <IconLock /> : <IconUnlock />}</IconButton>
-                      {!el.isLocked && <IconButton onClick={() => deleteElement(el)} title="Delete" danger><IconTrash /></IconButton>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Element content */}
-                <div
-                  id={`content-${el.id}`}
-                  className="relative group"
-                  style={{
-                    width: scaledWidth, height: scaledHeight,
-                    transform: `rotate(${el.rotation}deg)`,
-                    overflow: 'visible',
-                    cursor: el.isLocked ? 'not-allowed' : 'grab'
-                  }}
-                  onMouseDown={(e) => handleElementMouseDown(e, el.id, 'move')}
-                  onClick={(e) => { e.stopPropagation(); setSelectedId(el.id); setContextMenu(null); }}
-                >
-                  {/* Subtle selection indicator - no dashed border */}
-                  {isSelected && !el.isLocked && (
-                    <div 
-                      className="absolute -inset-2 pointer-events-none" 
-                      style={{ 
-                        borderRadius: NEO.radius,
-                        background: 'rgba(58, 58, 54, 0.03)'
-                      }} 
-                    />
-                  )}
-
-                  {/* Resize handles - only when selected */}
-                  {isSelected && !el.isLocked && (<>
-                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 cursor-ns-resize z-20" style={{ background: 'white', borderRadius: '50%', boxShadow: NEO.shadow }} onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize-n')} />
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 cursor-ns-resize z-20" style={{ background: 'white', borderRadius: '50%', boxShadow: NEO.shadow }} onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize-s')} />
-                    <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 cursor-ew-resize z-20" style={{ background: 'white', borderRadius: '50%', boxShadow: NEO.shadow }} onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize-w')} />
-                    <div className="absolute top-1/2 -right-2 -translate-y-1/2 w-4 h-4 cursor-ew-resize z-20" style={{ background: 'white', borderRadius: '50%', boxShadow: NEO.shadow }} onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize-e')} />
-                    <div className="absolute -top-4 -left-4 w-5 h-5 cursor-nwse-resize z-20 flex items-center justify-center text-[10px]" style={{ background: 'white', borderRadius: '50%', boxShadow: NEO.shadow, color: NEO.inkLight }} onMouseDown={(e) => handleElementMouseDown(e, el.id, 'rotate')}>↻</div>
-                    <div className="absolute -top-4 -right-4 w-5 h-5 cursor-nesw-resize z-20 flex items-center justify-center text-[10px]" style={{ background: 'white', borderRadius: '50%', boxShadow: NEO.shadow, color: NEO.inkLight }} onMouseDown={(e) => handleElementMouseDown(e, el.id, 'rotate')}>↻</div>
-                    <div className="absolute -bottom-4 -left-4 w-5 h-5 cursor-nesw-resize z-20 flex items-center justify-center text-[10px]" style={{ background: 'white', borderRadius: '50%', boxShadow: NEO.shadow, color: NEO.inkLight }} onMouseDown={(e) => handleElementMouseDown(e, el.id, 'rotate')}>↻</div>
-                    <div className="absolute -bottom-4 -right-4 w-5 h-5 cursor-nwse-resize z-20 flex items-center justify-center text-[10px]" style={{ background: 'white', borderRadius: '50%', boxShadow: NEO.shadow, color: NEO.inkLight }} onMouseDown={(e) => handleElementMouseDown(e, el.id, 'rotate')}>↻</div>
-                  </>)}
-
-                  {/* Grain overlay */}
-                  <div className="absolute inset-0 pointer-events-none z-[5]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`, opacity: 0.08, mixBlendMode: 'multiply', borderRadius: el.type === 'image' ? (el.shape?.borderRadius || NEO.radius) : '2px' }} />
-
-                  {el.type === 'image' ? (
-                    // Images with white sticker edge and handmade shapes
-                    <div 
-                      className="overflow-hidden" 
-                      style={{ 
-                        padding: '6px', // White sticker edge
-                        background: 'white',
-                        boxShadow: NEO.shadow,
-                        borderRadius: el.shape?.borderRadius || NEO.radius,
-                        clipPath: el.shape?.clipPath || 'none',
-                        filter: el.texture !== 'none' ? el.texture : 'none'
-                      }}
-                    >
-                      <img 
-                        src={el.content} 
-                        className="w-full h-auto block" 
-                        draggable="false" 
-                        style={{ 
-                          borderRadius: `calc(${el.shape?.borderRadius || NEO.radius} - 4px)`,
-                        }} 
-                      />
-                    </div>
-                  ) : el.type === 'sticker' ? (
-                    // Stickers: white contour edge around the shape
-                    <div className="flex items-center justify-center h-full" style={{ 
-                      padding: '16px',
-                      filter: 'drop-shadow(0 0 0 white) drop-shadow(3px 3px 0px white) drop-shadow(-3px -3px 0px white) drop-shadow(3px -3px 0px white) drop-shadow(-3px 3px 0px white) drop-shadow(0 3px 0px white) drop-shadow(0 -3px 0px white) drop-shadow(3px 0 0px white) drop-shadow(-3px 0 0px white)'
-                    }}>
-                      <span className="text-6xl">{el.content}</span>
-                    </div>
-                  ) : (
-                    // Text: tight letter card style
-                    isEditingThisText ? (
-                      <textarea
-                        ref={editTextRef}
-                        defaultValue={el.content}
-                        onBlur={(e) => submitTextEdit(el.id, e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitTextEdit(el.id, e.target.value); } }}
-                        className="w-full h-full outline-none resize-none"
-                        style={{ 
-                          ...el.style, 
-                          width: '100%', 
-                          height: '100%', 
-                          fontSize: `${(el.style?.fontSize || 22) * scale}px`, 
-                          transform: 'none', 
-                          boxShadow: NEO.shadow,
-                          border: `2px solid ${NEO.ink}`
-                        }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                      />
-                    ) : (
-                      <div 
-                        className="overflow-hidden" 
-                        style={{ 
-                          ...el.style, 
-                          width: 'fit-content', 
-                          height: 'fit-content', 
-                          fontSize: `${(el.style?.fontSize || 22) * scale}px`, 
-                          transform: el.style?.transform || 'none', 
-                          boxShadow: NEO.shadow,
-                          border: 'none'
-                        }}
-                        onDoubleClick={() => startEditingText(el)}
-                      >
-                        {el.content}
-                      </div>
-                    )
-                  )}
-                  
-                  {el.isLocked && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/5 z-50 pointer-events-none" style={{ borderRadius: NEO.radius }}>
-                      <div className="p-2 bg-white/90" style={{ boxShadow: NEO.shadow, borderRadius: '50%' }}><IconLock /></div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {sortedElements.map(el => (
+            <CanvasElement 
+              key={el.id} 
+              element={el} 
+              isSelected={selectedId === el.id} 
+              isEditing={editingTextId === el.id} 
+              editRef={editTextRef} 
+              onMouseDown={handleElementMouseDown} 
+              onClick={e => { e.stopPropagation(); setSelectedId(el.id); setContextMenu(null); }} 
+              onContextMenu={(e) => handleContextMenu(e, el.id)}
+              onSubmitEdit={t => { if (t.trim()) { saveHistory(); updateElement(el.id, { content: t.trim() }); } setEditingTextId(null); }} 
+              onStartEdit={() => !el.isLocked && setEditingTextId(el.id)} 
+              toolbarProps={toolbarActions(el)}
+              // Comments Props
+              comments={comments.filter(c => c.targetId === el.id)}
+              isAddingComment={newCommentTargetId === el.id}
+              commentText={newCommentText}
+              onCommentTextChange={setNewCommentText}
+              onAddCommentSubmit={addElementComment}
+              onAddCommentCancel={() => { setNewCommentTargetId(null); setNewCommentText(''); }}
+              commentInputRef={newCommentRef}
+              // Comment Edit Props
+              onDeleteComment={handleDeleteComment}
+              onEditComment={handleEditComment}
+              editingCommentId={editingCommentId}
+              editingCommentText={editingCommentText}
+              onEditingCommentTextChange={setEditingCommentText}
+              onSaveEditComment={handleSaveEditComment}
+              onCancelEditComment={handleCancelEditComment}
+              editCommentInputRef={editCommentInputRef}
+            />
+          ))}
         </div>
+
+        {/* Lasso Overlay */}
+        {lassoState.isDrawing && lassoState.points.length > 0 && (
+          <svg className="absolute inset-0 pointer-events-none z-[2000]" style={{ width: '100%', height: '100%' }}>
+            <polyline 
+              points={lassoState.points.map(p => `${p.x},${p.y}`).join(' ')} 
+              fill="none" 
+              stroke={NEO.ink} 
+              strokeWidth={2} 
+              strokeDasharray="4 4" 
+            />
+          </svg>
+        )}
       </main>
 
-      {/* Right-click Context Menu */}
       {contextMenu && (
-        <div 
-          className="fixed z-[200] py-2 min-w-[180px]"
-          style={{ 
-            left: contextMenu.x, 
-            top: contextMenu.y, 
-            background: 'white',
-            border: `1px solid ${NEO.border}`,
-            boxShadow: NEO.shadowHover,
-            borderRadius: NEO.radius
-          }}
-          onMouseDown={e => e.stopPropagation()}
-        >
-          <button 
-            onClick={startAddingComment}
-            className="w-full px-4 py-2.5 text-left text-[12px] flex items-center gap-3 hover:bg-slate-50 transition-colors"
-            style={{ color: NEO.ink }}
-          >
-            <IconMessage />
-            Add Comment
-          </button>
-        </div>
+        <ContextMenu 
+          x={contextMenu.x} 
+          y={contextMenu.y} 
+          onAddComment={startAddingComment} 
+          onClose={() => setContextMenu(null)}
+        />
       )}
+      
+      {draggedFromDrawer && <div className="fixed pointer-events-none z-[1000]" style={{ left: draggedFromDrawer.x, top: draggedFromDrawer.y, transform: 'translate(-50%, -50%) scale(0.85)', opacity: 0.95 }}>{draggedFromDrawer.type === 'image' ? <div style={{ padding: '4px', background: 'white', borderRadius: NEO.radius, boxShadow: NEO.shadow }}><img src={draggedFromDrawer.data.url} className="w-36" style={{ borderRadius: NEO.radiusSm }} /></div> : draggedFromDrawer.type === 'sticker' ? <div className="p-5 text-4xl" style={{ filter: 'drop-shadow(0 0 0 white) drop-shadow(3px 3px 0px white) drop-shadow(-3px -3px 0px white)' }}>{draggedFromDrawer.data}</div> : <div style={{ ...previewTextStyle, transform: 'none', fontSize: `${previewTextStyle.fontSize * 0.8}px` }}>{textInput || "..."}</div>}</div>}
+      {activeTool === 'connect' && <div className="fixed bottom-24 left-1/2 -translate-x-1/2 px-5 py-2.5 z-[150] text-sm font-medium" style={{ background: NEO.ink, color: NEO.bg, boxShadow: NEO.shadowHover, borderRadius: NEO.radiusLg }}>{connectFrom ? '👆 Click another element to connect' : '👆 Click an element to start'}</div>}
+      {lassoState.active && !lassoState.isDrawing && <div className="fixed bottom-24 left-1/2 -translate-x-1/2 px-5 py-2.5 z-[150] text-sm font-medium animate-pulse" style={{ background: NEO.ink, color: NEO.bg, boxShadow: NEO.shadowHover, borderRadius: NEO.radiusLg }}>✂️ Draw on the image to crop it</div>}
 
-      {/* Dragged preview */}
-      {draggedFromDrawer && (
-        <div className="fixed pointer-events-none z-[1000]" style={{ left: draggedFromDrawer.x, top: draggedFromDrawer.y, transform: 'translate(-50%, -50%) scale(0.85)', opacity: 0.95 }}>
-          {draggedFromDrawer.type === 'image' ? (
-            <div style={{ padding: '4px', background: 'white', borderRadius: NEO.radius, boxShadow: NEO.shadow }}>
-              <img src={draggedFromDrawer.data.url} className="w-36" style={{ borderRadius: NEO.radiusSm }} />
-            </div>
-          ) : draggedFromDrawer.type === 'sticker' ? (
-            <div className="p-5 text-4xl" style={{ filter: 'drop-shadow(0 0 0 white) drop-shadow(3px 3px 0px white) drop-shadow(-3px -3px 0px white) drop-shadow(3px -3px 0px white) drop-shadow(-3px 3px 0px white)' }}>{draggedFromDrawer.data}</div>
-          ) : (
-            <div style={{...previewTextStyle, transform: 'none', fontSize: `${previewTextStyle.fontSize * 0.8}px`}}>{textInput || "..."}</div>
-          )}
-        </div>
-      )}
+      <BottomControls scale={viewport.scale} onZoomIn={() => setViewport(p => ({ ...p, scale: Math.min(3, p.scale * 1.2) }))} onZoomOut={() => setViewport(p => ({ ...p, scale: Math.max(0.2, p.scale / 1.2) }))} onSnapToCenter={() => { const r = viewportRef.current?.getBoundingClientRect(); if (r && elements.length) { const cx = elements.reduce((s, e) => s + e.x + (e.width || 220) / 2, 0) / elements.length; const cy = elements.reduce((s, e) => s + e.y + 150, 0) / elements.length; setIsAnimating(true); setViewport({ x: r.width / 2 - cx, y: r.height / 2 - cy, scale: 1 }); setTimeout(() => setIsAnimating(false), 400); } }} />
+      <Minimap elements={elements} selectedId={selectedId} viewport={viewport} viewportRef={viewportRef} onNavigate={(x, y) => { const r = viewportRef.current?.getBoundingClientRect(); if (r) setViewport(p => ({ x: r.width / 2 / p.scale - x, y: r.height / 2 / p.scale - y, scale: p.scale })); }} />
+      <ActionButtons />
 
-      {/* Connection mode indicator */}
-      {activeTool === 'connect' && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 px-5 py-2.5 z-[150] text-sm font-medium" style={{ background: NEO.ink, color: NEO.bg, boxShadow: NEO.shadowHover, borderRadius: NEO.radiusLg }}>
-          {connectFrom ? '👆 Click another element to connect' : '👆 Click an element to start'}
-        </div>
-      )}
-
-      {/* ===== BOTTOM CONTROLS ===== */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-3 py-2 z-[140]" style={{ background: NEO.surface, backdropFilter: 'blur(20px)', border: `1px solid ${NEO.border}`, boxShadow: NEO.shadow, borderRadius: NEO.radiusLg }} onMouseDown={e => e.stopPropagation()}>
-        <IconButton onClick={zoomOut} title="Zoom Out"><IconZoomOut /></IconButton>
-        <span className="text-xs font-semibold px-2 min-w-[50px] text-center" style={{ color: NEO.ink }}>{Math.round(viewport.scale * 100)}%</span>
-        <IconButton onClick={zoomIn} title="Zoom In"><IconZoomIn /></IconButton>
-        <div className="w-px h-6" style={{ background: NEO.accent }} />
-        <IconButton onClick={snapToCenter} title="Center View (Cmd+0)"><IconTarget /></IconButton>
-      </div>
-
-      {/* ===== MINIMAP ===== */}
-      <div 
-        className="fixed bottom-6 left-6 overflow-hidden z-[140] cursor-pointer"
-        style={{ 
-          width: minimapSize.width, 
-          height: minimapSize.height, 
-          background: 'rgba(255,255,255,0.9)', 
-          backdropFilter: 'blur(10px)',
-          border: `1px solid ${NEO.border}`, 
-          boxShadow: NEO.shadow,
-          borderRadius: NEO.radius
-        }}
-        onClick={handleMinimapClick}
-        onMouseDown={e => e.stopPropagation()}
-      >
-        {/* Elements as dots */}
-        {elements.map(el => (
-          <div
-            key={el.id}
-            style={{
-              position: 'absolute',
-              left: (el.x - elementsBounds.minX) * minimapScale,
-              top: (el.y - elementsBounds.minY) * minimapScale,
-              width: Math.max(4, (el.width || 220) * minimapScale),
-              height: Math.max(3, 150 * minimapScale),
-              background: selectedId === el.id ? NEO.ink : NEO.inkLight,
-              opacity: selectedId === el.id ? 1 : 0.5,
-              borderRadius: '2px'
-            }}
-          />
-        ))}
-        
-        {/* Viewport indicator */}
-        {viewportRef.current && (
-          <div
-            className="absolute border-2 pointer-events-none"
-            style={{
-              left: (-viewport.x - elementsBounds.minX) * minimapScale,
-              top: (-viewport.y - elementsBounds.minY) * minimapScale,
-              width: (viewportRef.current.clientWidth / viewport.scale) * minimapScale,
-              height: (viewportRef.current.clientHeight / viewport.scale) * minimapScale,
-              borderColor: '#60a5fa',
-              background: 'rgba(96, 165, 250, 0.1)',
-              borderRadius: '4px'
-            }}
-          />
-        )}
-      </div>
-
-      {/* Action buttons */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[140]">
-        <button className="group relative" style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', backgroundColor: 'white', boxShadow: NEO.shadow, color: NEO.ink }}>
-          <IconShare />
-          <div className="absolute right-full mr-3 px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-all text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ borderRadius: NEO.radius, background: NEO.ink, color: NEO.bg }}>Share</div>
-        </button>
-        <button className="group relative" style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', backgroundColor: NEO.ink, color: NEO.bg, boxShadow: NEO.shadowHover }}>
-          <IconPublish />
-          <div className="absolute right-full mr-3 px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-all text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ borderRadius: NEO.radius, background: NEO.ink, color: NEO.bg }}>Publish</div>
-        </button>
-      </div>
-
-      <style>{`
-        * { font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif; color-scheme: light; }
-        body { background-color: ${NEO.bg}; margin: 0; }
-        ::-webkit-scrollbar { display: none; }
-        .animate-popIn { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-        .caret-animate { animation: caretBlink 1s step-end infinite; }
-        @keyframes caretBlink { 0%, 100% { caret-color: ${NEO.ink}; } 50% { caret-color: transparent; } }
-      `}</style>
+      <style>{`* { font-family: "SF Pro Display", -apple-system, sans-serif; color-scheme: light; } body { background: ${NEO.bg}; margin: 0; } ::-webkit-scrollbar { display: none; } .animate-popIn { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); } @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } } .caret-animate { animation: caretBlink 1s step-end infinite; } @keyframes caretBlink { 0%, 100% { caret-color: ${NEO.ink}; } 50% { caret-color: transparent; } }`}</style>
     </div>
   );
 }

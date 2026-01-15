@@ -10,6 +10,7 @@ export const theme = {
     ink: '#3A3A36',
     inkLight: '#A8A8A2',
     accent: '#E6E2D3',
+    riceYellow: '#F0EDE0', // 更柔和的米黄色用于轮廓
     border: 'rgba(230, 226, 211, 0.4)',
     frosted: 'rgba(255, 255, 255, 0.75)',
     danger: '#F87171',
