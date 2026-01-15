@@ -39,6 +39,7 @@ const RoundedIconButton = ({ onClick, children, variant = 'default', title, clas
       className={`${baseClasses} ${variants[variant]} ${className}`}
       title={title}
       type="button"
+      style={{ borderRadius: '9999px' }}
     >
       {children}
     </button>
