@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { db, id, tx } from '../../lib/db';
 import { NEO } from '../../styles/theme';
+import { clearStoredAuthToken } from '../../lib/authStorage';
 
 // Icons
 const PlusIcon = () => (
@@ -53,7 +54,7 @@ const GlobeIcon = () => (
 const VISIBILITY_OPTIONS = [
   { value: 'private', label: 'Private', description: 'Only you can view and edit', icon: LockIcon, color: '#6B7280' },
   { value: 'protected', label: 'Protected', description: 'Anyone can view, only you can edit', icon: ShieldIcon, color: '#F59E0B' },
-  { value: 'public', label: 'Public', description: 'Anyone can view and edit', icon: GlobeIcon, color: '#10B981' },
+  { value: 'public', label: 'Public', description: 'Anyone can view; edits require login', icon: GlobeIcon, color: '#10B981' },
 ];
 
 const LogoIcon = () => (
@@ -411,6 +412,7 @@ export default function BoardsPage({ onSelectBoard }) {
 
   const handleSignOut = () => {
     db.auth.signOut();
+    clearStoredAuthToken();
   };
 
   const displayName = user?.email?.split('@')[0] || 'User';
@@ -482,6 +484,7 @@ export default function BoardsPage({ onSelectBoard }) {
               color: NEO.bg,
               borderRadius: NEO.radius,
               boxShadow: NEO.shadow,
+              padding: '10px 10px',
             }}
           >
             <PlusIcon />

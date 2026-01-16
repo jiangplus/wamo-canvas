@@ -5,6 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NEO } from '../../styles/theme';
 import { db } from '../../lib/db';
+import { setStoredAuthToken } from '../../lib/authStorage';
 
 const AuthStates = {
   EMAIL: 'email',
@@ -54,7 +55,11 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      await db.auth.signInWithMagicCode({ email: email.trim(), code: code.trim() });
+      const res = await db.auth.signInWithMagicCode({
+        email: email.trim(),
+        code: code.trim()
+      });
+      setStoredAuthToken(res?.user?.refresh_token);
       // Auth state will update automatically via useAuth
     } catch (err) {
       setError(err.body?.message || 'Invalid code. Please try again.');

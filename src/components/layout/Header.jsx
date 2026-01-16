@@ -7,6 +7,7 @@ import { NEO } from '../../styles/theme';
 import { IconMagic } from '../../icons';
 import Avatar from '../ui/Avatar';
 import { db } from '../../lib/db';
+import { clearStoredAuthToken } from '../../lib/authStorage';
 
 const BackIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -61,6 +62,7 @@ export const UserMenu = () => {
 
   const handleSignOut = () => {
     db.auth.signOut();
+    clearStoredAuthToken();
   };
 
   const handleSignIn = () => {

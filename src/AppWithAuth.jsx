@@ -1,12 +1,13 @@
 /**
  * AppWithAuth - Authentication wrapper for the main app
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from './lib/db';
 import App from './App';
 import Auth from './components/auth/Auth';
 import BoardsPage from './components/boards/BoardsPage';
 import { NEO } from './styles/theme';
+import { getStoredAuthToken, clearStoredAuthToken } from './lib/authStorage';
 
 function LoadingScreen() {
   return (
@@ -60,6 +61,8 @@ function LoadingScreen() {
 export default function AppWithAuth() {
   const { isLoading, user, error } = db.useAuth();
   const [selectedCanvasId, setSelectedCanvasId] = useState(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const restoreAttemptedRef = useRef(false);
 
   // Check for canvas ID in URL hash or localStorage
   useEffect(() => {
@@ -68,6 +71,23 @@ export default function AppWithAuth() {
       setSelectedCanvasId(hash);
     }
   }, []);
+
+  useEffect(() => {
+    if (restoreAttemptedRef.current) return;
+    if (isLoading || user || error) return;
+    const token = getStoredAuthToken();
+    restoreAttemptedRef.current = true;
+    if (!token) return;
+    setIsRestoring(true);
+    db.auth
+      .signInWithCustomToken(token)
+      .catch(() => {
+        clearStoredAuthToken();
+      })
+      .finally(() => {
+        setIsRestoring(false);
+      });
+  }, [isLoading, user, error]);
 
   // Update URL hash when canvas changes
   useEffect(() => {
@@ -95,6 +115,10 @@ export default function AppWithAuth() {
 
   // For other pages (boards, auth), wait for auth to load
   if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (isRestoring) {
     return <LoadingScreen />;
   }
 

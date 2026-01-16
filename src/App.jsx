@@ -104,7 +104,7 @@ const VISIBILITY_OPTIONS = [
   {
     value: "public",
     label: "Public",
-    description: "Anyone can view and edit",
+    description: "Anyone can view; edits require login",
     icon: GlobeIcon,
     color: "#10B981",
   },
@@ -121,6 +121,7 @@ function VisibilityButton({ visibility, onChangeVisibility, isOwner }) {
   const VisibilityIcon = visibilityOption.icon;
 
   const handleVisibilityChange = (e, newVisibility) => {
+    if (!isOwner) return;
     e.stopPropagation();
     onChangeVisibility(newVisibility);
     setShowDropdown(false);
@@ -130,6 +131,7 @@ function VisibilityButton({ visibility, onChangeVisibility, isOwner }) {
     <div className="relative">
       <button
         onClick={(e) => {
+          if (!isOwner) return;
           e.stopPropagation();
           setShowDropdown(!showDropdown);
         }}
@@ -140,7 +142,8 @@ function VisibilityButton({ visibility, onChangeVisibility, isOwner }) {
           border: `1px solid ${NEO.border}`,
           boxShadow: NEO.shadow,
           borderRadius: NEO.radiusLg,
-          cursor: "pointer",
+          cursor: isOwner ? "pointer" : "default",
+          opacity: isOwner ? 1 : 0.7,
         }}
         title={visibilityOption.description}
       >
@@ -316,7 +319,7 @@ const getAvatarUrl = (seed) =>
 // ============================================================================
 export default function App({ canvasId, onBack }) {
   // Get current user
-  const { user } = db.useAuth();
+  const { user, isLoading: authLoading } = db.useAuth();
   const userId = user?.id;
   const includeUserData = Boolean(userId);
 
@@ -1220,6 +1223,21 @@ export default function App({ canvasId, onBack }) {
   // Check access: private canvases require owner
   const isPrivate = !canvas?.visibility || canvas?.visibility === "private";
   const canView = canvas && (!isPrivate || isOwner);
+
+  if (authLoading && isPrivate) {
+    return (
+      <div
+        className="flex h-screen w-full items-center justify-center"
+        style={{ background: NEO.bg }}
+      >
+        <div className="text-center">
+          <div className="animate-pulse text-lg" style={{ color: NEO.ink }}>
+            Loading canvas...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!canvas || !canView) {
     return (
