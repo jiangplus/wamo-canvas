@@ -350,7 +350,17 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   const canvasOwnerId = canvas?.owner?.[0]?.id;
   const isOwner = userId && canvasOwnerId && userId === canvasOwnerId;
   const canvasVisibility = canvas?.visibility || "private";
-  const canEdit = Boolean(userId) && (isOwner || canvasVisibility === "public");
+  const isPublic = canvasVisibility === "public";
+  const isProtected = canvasVisibility === "protected";
+  const isPrivate = canvasVisibility === "private";
+  const ownerKnown = Boolean(canvasOwnerId);
+  const canEdit =
+    Boolean(userId) &&
+    (isPublic ||
+      (isProtected && isOwner) ||
+      (isPrivate && (ownerKnown ? isOwner : true)));
+  const canChangeVisibility =
+    Boolean(userId) && (isOwner || (isPrivate && !ownerKnown));
 
   const elements = useMemo(() => {
     if (!canvas?.elements) return [];
@@ -578,10 +588,10 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
   const changeCanvasVisibility = useCallback(
     (visibility) => {
-      if (!canvasId || !isOwner) return;
+      if (!canvasId || !canChangeVisibility) return;
       db.transact([tx.canvases[canvasId].update({ visibility })]);
     },
-    [canvasId, isOwner],
+    [canvasId, canChangeVisibility],
   );
 
   // ===== INIT EFFECTS =====
@@ -1223,7 +1233,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   }
 
   // Check access: private canvases require owner
-  const isPrivate = !canvas?.visibility || canvas?.visibility === "private";
   const canView = Boolean(canvas);
 
   if (effectiveAuthLoading && isPrivate) {
@@ -1314,7 +1323,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         <VisibilityButton
           visibility={canvasVisibility}
           onChangeVisibility={changeCanvasVisibility}
-          isOwner={isOwner}
+          isOwner={canChangeVisibility}
         />
       </div>
 

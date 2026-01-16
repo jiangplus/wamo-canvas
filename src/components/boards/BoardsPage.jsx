@@ -582,7 +582,11 @@ export default function BoardsPage({ onSelectBoard }) {
                   onSelect={onSelectBoard}
                   onDelete={handleDeleteBoard}
                   onChangeVisibility={handleChangeVisibility}
-                  isOwner={board.owner?.[0]?.id === userId}
+                  isOwner={
+                    board.owner?.[0]?.id
+                      ? board.owner?.[0]?.id === userId
+                      : Boolean(userId)
+                  }
                 />
               ))
             }
