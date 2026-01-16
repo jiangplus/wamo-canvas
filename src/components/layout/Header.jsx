@@ -8,8 +8,31 @@ import { IconMagic } from '../../icons';
 import Avatar from '../ui/Avatar';
 import { db } from '../../lib/db';
 
-export const Logo = () => (
+const BackIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="19" y1="12" x2="5" y2="12" />
+    <polyline points="12 19 5 12 12 5" />
+  </svg>
+);
+
+export const Logo = ({ onBack, canvasName }) => (
   <div className="fixed top-8 left-8 z-[150] flex items-center gap-3">
+    {onBack && (
+      <button
+        onClick={onBack}
+        className="w-14 h-14 flex items-center justify-center transition-all hover:scale-105"
+        style={{
+          background: NEO.surface,
+          color: NEO.ink,
+          boxShadow: NEO.shadow,
+          borderRadius: NEO.radiusLg,
+          border: `1px solid ${NEO.border}`,
+        }}
+        title="Back to Boards"
+      >
+        <BackIcon />
+      </button>
+    )}
     <div
       className="w-14 h-14 flex items-center justify-center"
       style={{
@@ -21,7 +44,14 @@ export const Logo = () => (
     >
       <IconMagic />
     </div>
-    {/* Removed text as requested */}
+    {canvasName && (
+      <span
+        className="text-sm font-medium max-w-[200px] truncate"
+        style={{ color: NEO.ink }}
+      >
+        {canvasName}
+      </span>
+    )}
   </div>
 );
 
@@ -156,9 +186,9 @@ export const OnlineUsers = ({ users = [1, 2, 3] }) => (
   </div>
 );
 
-const Header = () => (
+const Header = ({ onBack, canvasName }) => (
   <>
-    <Logo />
+    <Logo onBack={onBack} canvasName={canvasName} />
     <UserMenu />
   </>
 );

@@ -37,17 +37,6 @@ const INITIAL_PICTURE_POOL = {
   private: [{ id: 'pr1', url: 'https://images.unsplash.com/photo-1515405299443-f71bb768a69e?w=400' }]
 };
 
-// Get or create a persistent canvas ID
-const getCanvasId = () => {
-  const stored = localStorage.getItem('wamo-canvas-id');
-  if (stored) return stored;
-  const newId = crypto.randomUUID();
-  localStorage.setItem('wamo-canvas-id', newId);
-  return newId;
-};
-
-const CANVAS_ID = getCanvasId();
-
 // ============================================================================
 // HELPERS
 // ============================================================================
@@ -90,47 +79,27 @@ const getAvatarUrl = (seed) => `https://api.dicebear.com/7.x/notionists/svg?seed
 // ============================================================================
 // MAIN APP
 // ============================================================================
-export default function App() {
+export default function App({ canvasId, onBack }) {
   // Get current user
   const user = db.useUser();
   const userId = user?.id;
 
-  // ===== CANVAS SETUP =====
-  const [canvasId, setCanvasId] = useState(null);
-
-  // Query for existing canvas or create one
-  const { data: canvasData, isLoading: canvasLoading } = db.useQuery({
-    canvases: {
-      $: { where: { id: CANVAS_ID } },
-      elements: {
-        creator: {},
-        comments: { author: {} },
+  // Query canvas data
+  const { data: canvasData, isLoading: canvasLoading } = db.useQuery(
+    canvasId ? {
+      canvases: {
+        $: { where: { id: canvasId } },
+        elements: {
+          creator: {},
+          comments: { author: {} },
+        },
+        connections: {
+          fromElement: {},
+          toElement: {},
+        },
       },
-      connections: {
-        fromElement: {},
-        toElement: {},
-      },
-    },
-  });
-
-  // Create default canvas if it doesn't exist
-  useEffect(() => {
-    if (canvasLoading || !userId) return;
-
-    const existingCanvas = canvasData?.canvases?.[0];
-    if (existingCanvas) {
-      setCanvasId(existingCanvas.id);
-    } else {
-      // Create canvas with UUID
-      db.transact([
-        tx.canvases[CANVAS_ID].update({
-          name: 'My Canvas',
-          createdAt: Date.now(),
-        }).link({ owner: userId }),
-      ]);
-      setCanvasId(CANVAS_ID);
-    }
-  }, [canvasLoading, canvasData, userId]);
+    } : null
+  );
 
   // ===== DERIVED DATA FROM INSTANTDB =====
   const canvas = canvasData?.canvases?.[0];
@@ -647,11 +616,28 @@ export default function App() {
   });
 
   // ===== LOADING STATE =====
-  if (canvasLoading || !canvasId) {
+  if (canvasLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center" style={{ background: NEO.bg }}>
         <div className="text-center">
           <div className="animate-pulse text-lg" style={{ color: NEO.ink }}>Loading canvas...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canvas) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center" style={{ background: NEO.bg }}>
+        <div className="text-center">
+          <div className="text-lg mb-4" style={{ color: NEO.ink }}>Canvas not found</div>
+          <button
+            onClick={onBack}
+            className="px-4 py-2 text-sm font-medium"
+            style={{ background: NEO.ink, color: NEO.bg, borderRadius: NEO.radius }}
+          >
+            Back to Boards
+          </button>
         </div>
       </div>
     );
@@ -662,7 +648,7 @@ export default function App() {
     <div className="flex h-screen w-full overflow-hidden select-none relative" style={{ fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif', background: NEO.bg, color: NEO.ink }} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onClick={() => setContextMenu(null)}>
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[10]" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/natural-paper.png')` }} />
 
-      <Header />
+      <Header onBack={onBack} canvasName={canvas?.name} />
       <Toolbar activeTool={activeTool} onToolChange={(t) => { setActiveTool(t); setConnectFrom(null); }} />
 
       <ImageDrawer isOpen={activeTool === 'image'} onClose={() => setActiveTool(null)} activeTab={activeTab} onTabChange={setActiveTab} picturePool={picturePool} drawerImageAngles={drawerImageAngles} onUploadClick={() => fileInputRef.current?.click()} onImageDragStart={(img, x, y) => setDraggedFromDrawer({ type: 'image', data: img, x, y })} fileInputRef={fileInputRef} onFileUpload={handleFileUpload} />

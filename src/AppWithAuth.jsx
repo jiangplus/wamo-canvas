@@ -1,10 +1,11 @@
 /**
  * AppWithAuth - Authentication wrapper for the main app
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from './lib/db';
 import App from './App';
 import Auth from './components/auth/Auth';
+import BoardsPage from './components/boards/BoardsPage';
 import { NEO } from './styles/theme';
 
 function LoadingScreen() {
@@ -58,6 +59,32 @@ function LoadingScreen() {
 
 export default function AppWithAuth() {
   const { isLoading, user, error } = db.useAuth();
+  const [selectedCanvasId, setSelectedCanvasId] = useState(null);
+
+  // Check for canvas ID in URL hash or localStorage
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+      setSelectedCanvasId(hash);
+    }
+  }, []);
+
+  // Update URL hash when canvas changes
+  useEffect(() => {
+    if (selectedCanvasId) {
+      window.location.hash = selectedCanvasId;
+    } else {
+      window.location.hash = '';
+    }
+  }, [selectedCanvasId]);
+
+  const handleSelectBoard = (canvasId) => {
+    setSelectedCanvasId(canvasId);
+  };
+
+  const handleBack = () => {
+    setSelectedCanvasId(null);
+  };
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -100,5 +127,11 @@ export default function AppWithAuth() {
     return <Auth />;
   }
 
-  return <App />;
+  // Show boards page if no canvas selected
+  if (!selectedCanvasId) {
+    return <BoardsPage onSelectBoard={handleSelectBoard} />;
+  }
+
+  // Show canvas
+  return <App canvasId={selectedCanvasId} onBack={handleBack} />;
 }
