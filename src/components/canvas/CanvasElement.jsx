@@ -167,6 +167,7 @@ export const CanvasElement = ({
   toolbarProps,
   // Comments Props
   comments = [],
+  canEdit = false,
   currentUserId,
   isAddingComment,
   commentText,
@@ -199,7 +200,7 @@ export const CanvasElement = ({
   return (
     <div className="absolute" style={{ left: element.x, top: element.y, zIndex: isSelected ? 100 : (element.zIndex || 20) }}>
       {/* 选中时显示工具栏 */}
-      {isSelected && <ElementToolbar element={element} {...toolbarProps} />}
+      {isSelected && canEdit && <ElementToolbar element={element} {...toolbarProps} />}
 
       {/* 元素主体 */}
       <div
@@ -210,14 +211,14 @@ export const CanvasElement = ({
           height: scaledHeight,
           transform: `rotate(${element.rotation}deg)`,
           overflow: 'visible',
-          cursor: element.isLocked ? 'not-allowed' : 'grab'
+          cursor: canEdit ? (element.isLocked ? 'not-allowed' : 'grab') : 'default'
         }}
         onMouseDown={(e) => onMouseDown(e, element.id, 'move')}
         onClick={onClick}
         onContextMenu={(e) => onContextMenu(e, element.id)}
       >
         {/* 选框与手柄 */}
-        {isSelected && !element.isLocked && (
+        {isSelected && !element.isLocked && canEdit && (
           <SelectionFrame onMouseDown={(e, type) => onMouseDown(e, element.id, type)} />
         )}
 

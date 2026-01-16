@@ -39,7 +39,7 @@ const rules = {
       isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
       isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
       canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner",
-      canEdit: "isCanvasPublic || isCanvasOwner",
+      canEdit: "isAuthenticated && (isCanvasPublic || isCanvasOwner)",
     },
   },
 
@@ -57,7 +57,7 @@ const rules = {
       isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
       isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
       canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner",
-      canEdit: "isCanvasPublic || isCanvasOwner",
+      canEdit: "isAuthenticated && (isCanvasPublic || isCanvasOwner)",
     },
   },
 
@@ -76,7 +76,7 @@ const rules = {
       isCanvasPublic: "data.ref('element.canvas.visibility')[0] == 'public'",
       isCanvasProtected: "data.ref('element.canvas.visibility')[0] == 'protected'",
       canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner",
-      canEdit: "isCanvasPublic || isCanvasOwner",
+      canEdit: "isAuthenticated && (isCanvasPublic || isCanvasOwner)",
     },
   },
 } satisfies InstantRules;

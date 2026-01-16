@@ -14,8 +14,9 @@ const TOOLS = [
   { id: 'connect', icon: IconConnect },
 ];
 
-export const Toolbar = ({ activeTool, onToolChange }) => {
+export const Toolbar = ({ activeTool, onToolChange, disabled = false }) => {
   const handleToolClick = (toolId) => {
+    if (disabled) return;
     onToolChange(activeTool === toolId ? null : toolId);
   };
 
@@ -37,6 +38,7 @@ export const Toolbar = ({ activeTool, onToolChange }) => {
           onClick={() => handleToolClick(tool.id)} 
           active={activeTool === tool.id}
           title={tool.id.charAt(0).toUpperCase() + tool.id.slice(1)}
+          disabled={disabled}
         >
           <tool.icon />
         </IconButton>

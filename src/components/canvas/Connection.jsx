@@ -33,7 +33,8 @@ export const Connection = ({
   inputRef,
   onEdit,
   onBlur,
-  onChange 
+  onChange,
+  readOnly = false
 }) => {
   if (!fromElement || !toElement) return null;
 
@@ -100,7 +101,10 @@ export const Connection = ({
             <input 
               ref={isEditing ? inputRef : null}
               onMouseDown={e => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); onEdit(connection.id); }}
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (!readOnly) onEdit(connection.id);
+              }}
               onBlur={onBlur}
               placeholder="describe..."
               maxLength={CONNECTION_CONFIG.maxLabelLength}
@@ -111,10 +115,12 @@ export const Connection = ({
                   ? `${Math.min(connection.text.length * 7 + 20, CONNECTION_CONFIG.labelMaxWidth)}px` 
                   : '80px',
                 minWidth: `${CONNECTION_CONFIG.labelMinWidth}px`,
-                maxWidth: `${CONNECTION_CONFIG.labelMaxWidth}px`
+                maxWidth: `${CONNECTION_CONFIG.labelMaxWidth}px`,
+                cursor: readOnly ? 'default' : 'text'
               }}
               value={connection.text}
               onChange={handleChange}
+              readOnly={readOnly}
             />
           </div>
         </div>

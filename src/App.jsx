@@ -345,6 +345,7 @@ export default function App({ canvasId, onBack }) {
   const canvasOwnerId = canvas?.owner?.[0]?.id;
   const isOwner = userId && canvasOwnerId && userId === canvasOwnerId;
   const canvasVisibility = canvas?.visibility || "private";
+  const canEdit = Boolean(userId) && (isOwner || canvasVisibility === "public");
 
   const elements = useMemo(() => {
     if (!canvas?.elements) return [];
@@ -466,16 +467,16 @@ export default function App({ canvasId, onBack }) {
 
   // ===== INSTANTDB MUTATIONS =====
   const updateElement = useCallback((elementId, updates) => {
-    if (!elementId) return;
+    if (!elementId || !canEdit) return;
     // Filter out non-schema fields
     const { creatorName, avatar, comments, creator, ...schemaUpdates } =
       updates;
     db.transact([tx.elements[elementId].update(schemaUpdates)]);
-  }, []);
+  }, [canEdit]);
 
   const addElement = useCallback(
     (data) => {
-      if (!canvasId || !userId) return;
+      if (!canvasId || !userId || !canEdit) return;
       const elementId = id();
       const zIndex = maxZIndex + 1;
 
@@ -504,21 +505,21 @@ export default function App({ canvasId, onBack }) {
       setSelectedId(elementId);
       return elementId;
     },
-    [canvasId, userId, maxZIndex],
+    [canvasId, userId, maxZIndex, canEdit],
   );
 
   const deleteElement = useCallback(
     (elementId) => {
-      if (!elementId) return;
+      if (!elementId || !canEdit) return;
       db.transact([tx.elements[elementId].delete()]);
       if (selectedId === elementId) setSelectedId(null);
     },
-    [selectedId],
+    [selectedId, canEdit],
   );
 
   const addConnection = useCallback(
     (fromId, toId) => {
-      if (!canvasId || !fromId || !toId) return;
+      if (!canvasId || !fromId || !toId || !canEdit) return;
       const connectionId = id();
 
       db.transact([
@@ -534,17 +535,17 @@ export default function App({ canvasId, onBack }) {
 
       return connectionId;
     },
-    [canvasId],
+    [canvasId, canEdit],
   );
 
   const updateConnection = useCallback((connectionId, text) => {
-    if (!connectionId) return;
+    if (!connectionId || !canEdit) return;
     db.transact([tx.connections[connectionId].update({ text })]);
-  }, []);
+  }, [canEdit]);
 
   const addComment = useCallback(
     (elementId, text) => {
-      if (!elementId || !text.trim() || !userId) return;
+      if (!elementId || !text.trim() || !userId || !canEdit) return;
       const commentId = id();
 
       db.transact([
@@ -557,18 +558,18 @@ export default function App({ canvasId, onBack }) {
           .link({ author: userId }),
       ]);
     },
-    [userId],
+    [userId, canEdit],
   );
 
   const updateComment = useCallback((commentId, text) => {
-    if (!commentId || !text.trim()) return;
+    if (!commentId || !text.trim() || !canEdit) return;
     db.transact([tx.comments[commentId].update({ text: text.trim() })]);
-  }, []);
+  }, [canEdit]);
 
   const deleteComment = useCallback((commentId) => {
-    if (!commentId) return;
+    if (!commentId || !canEdit) return;
     db.transact([tx.comments[commentId].delete()]);
-  }, []);
+  }, [canEdit]);
 
   const changeCanvasVisibility = useCallback(
     (visibility) => {
@@ -607,6 +608,23 @@ export default function App({ canvasId, onBack }) {
       setDrawerStickerAngles((prev) => ({ ...prev, ...angles }));
   }, []);
 
+  useEffect(() => {
+    if (!canEdit) {
+      setActiveTool(null);
+      setConnectFrom(null);
+      setEditingConnectionId(null);
+      setEditingTextId(null);
+      setNewCommentTargetId(null);
+      setContextMenu(null);
+      setLassoState({
+        active: false,
+        isDrawing: false,
+        elementId: null,
+        points: [],
+      });
+    }
+  }, [canEdit]);
+
   // ===== KEYBOARD =====
   useEffect(() => {
     const handle = (e) => {
@@ -637,11 +655,11 @@ export default function App({ canvasId, onBack }) {
       if (!selectedId) return;
       const el = elements.find((i) => i.id === selectedId);
       if (!el) return;
-      if (!el.isLocked && (e.key === "Delete" || e.key === "Backspace")) {
+      if (canEdit && !el.isLocked && (e.key === "Delete" || e.key === "Backspace")) {
         deleteElement(selectedId);
       }
       if ((e.metaKey || e.ctrlKey) && e.key === "c") setClipboard({ ...el });
-      if ((e.metaKey || e.ctrlKey) && e.key === "v" && clipboard) {
+      if (canEdit && (e.metaKey || e.ctrlKey) && e.key === "v" && clipboard) {
         addElement({
           type: clipboard.type,
           content: clipboard.content,
@@ -668,6 +686,7 @@ export default function App({ canvasId, onBack }) {
     lassoState,
     deleteElement,
     addElement,
+    canEdit,
   ]);
 
   // ===== WHEEL ZOOM & PAN =====
@@ -704,6 +723,10 @@ export default function App({ canvasId, onBack }) {
 
   // ===== MOUSE HANDLERS =====
   const handleCanvasMouseDown = (e) => {
+    if (!canEdit && interactionState !== "panning") {
+      setSelectedId(null);
+      setContextMenu(null);
+    }
     if (lassoState.active && lassoState.elementId) {
       if (e.target.closest(`#content-${lassoState.elementId}`)) {
         setLassoState((p) => ({
@@ -743,6 +766,11 @@ export default function App({ canvasId, onBack }) {
 
   const handleElementMouseDown = (e, elId, type) => {
     e.stopPropagation();
+    if (!canEdit) {
+      setSelectedId(elId);
+      setContextMenu(null);
+      return;
+    }
 
     if (lassoState.active) {
       if (lassoState.elementId === elId) {
@@ -766,6 +794,7 @@ export default function App({ canvasId, onBack }) {
     if (!el) return;
 
     if (activeTool === "connect") {
+      if (!canEdit) return;
       if (!connectFrom) {
         setConnectFrom(elId);
         setSelectedId(elId);
@@ -783,6 +812,7 @@ export default function App({ canvasId, onBack }) {
       (type === "move" || type.startsWith("resize") || type === "rotate")
     )
       return;
+    if (!canEdit && type !== "move") return;
     setSelectedId(elId);
     const node = document.getElementById(`content-${elId}`);
     const rect = node?.getBoundingClientRect();
@@ -819,6 +849,7 @@ export default function App({ canvasId, onBack }) {
     setMousePosition({ x: e.clientX, y: e.clientY });
 
     if (lassoState.isDrawing) {
+      if (!canEdit) return;
       setLassoState((p) => ({
         ...p,
         points: [...p.points, { x: e.clientX, y: e.clientY }],
@@ -844,11 +875,13 @@ export default function App({ canvasId, onBack }) {
         y: dragRef.current.initialViewport.y + dy / p.scale,
       }));
     else if (interactionState === "dragging") {
+      if (!canEdit) return;
       updateElement(dragRef.current.id, {
         x: dragRef.current.initialX + dx / viewport.scale,
         y: dragRef.current.initialY + dy / viewport.scale,
       });
     } else if (interactionState === "resizing") {
+      if (!canEdit) return;
       const {
         id: elId,
         initialW,
@@ -869,6 +902,7 @@ export default function App({ canvasId, onBack }) {
         updateElement(elId, { scale: Math.max(0.5, initialScale * ratio) });
       else updateElement(elId, { width: Math.max(80, initialW * ratio) });
     } else if (interactionState === "rotating") {
+      if (!canEdit) return;
       const {
         id: elId,
         startX,
@@ -887,6 +921,7 @@ export default function App({ canvasId, onBack }) {
 
   const handleMouseUp = (e) => {
     if (lassoState.isDrawing) {
+      if (!canEdit) return;
       const { elementId, points } = lassoState;
       const el = elements.find((i) => i.id === elementId);
       const node = document.getElementById(`content-${elementId}`);
@@ -930,6 +965,11 @@ export default function App({ canvasId, onBack }) {
     }
 
     if (draggedFromDrawer) {
+      if (!canEdit) {
+        setDraggedFromDrawer(null);
+        setInteractionState("idle");
+        return;
+      }
       const wp = getWorldCoords(e.clientX, e.clientY);
       addElement({
         type: draggedFromDrawer.type,
@@ -963,12 +1003,14 @@ export default function App({ canvasId, onBack }) {
 
   // ===== CONTEXT MENU & COMMENTS =====
   const handleContextMenu = (e, elementId) => {
+    if (!canEdit) return;
     e.preventDefault();
     if (!elementId) return;
     setContextMenu({ x: e.clientX, y: e.clientY, targetId: elementId });
   };
 
   const startAddingComment = () => {
+    if (!canEdit) return;
     if (contextMenu && contextMenu.targetId) {
       setNewCommentTargetId(contextMenu.targetId);
       setNewCommentText("");
@@ -978,20 +1020,21 @@ export default function App({ canvasId, onBack }) {
   };
 
   const addElementComment = () => {
-    if (!newCommentText.trim() || !newCommentTargetId) return;
+    if (!newCommentText.trim() || !newCommentTargetId || !canEdit) return;
     addComment(newCommentTargetId, newCommentText);
     setNewCommentTargetId(null);
     setNewCommentText("");
   };
 
   const handleEditComment = (comment) => {
+    if (!canEdit) return;
     setEditingCommentId(comment.id);
     setEditingCommentText(comment.text);
     setTimeout(() => editCommentInputRef.current?.focus(), 100);
   };
 
   const handleSaveEditComment = () => {
-    if (!editingCommentId || !editingCommentText.trim()) return;
+    if (!editingCommentId || !editingCommentText.trim() || !canEdit) return;
     updateComment(editingCommentId, editingCommentText);
     setEditingCommentId(null);
     setEditingCommentText("");
@@ -1003,11 +1046,13 @@ export default function App({ canvasId, onBack }) {
   };
 
   const handleDeleteComment = (commentId) => {
+    if (!canEdit) return;
     deleteComment(commentId);
   };
 
   // ===== FILE HANDLING =====
   const handleFileUpload = (e) => {
+    if (!canEdit) return;
     Array.from(e.target.files || []).forEach((f) => {
       if (!f.type.startsWith("image/")) return;
       const r = new FileReader();
@@ -1028,6 +1073,7 @@ export default function App({ canvasId, onBack }) {
   };
 
   const handleCanvasDrop = (e) => {
+    if (!canEdit) return;
     e.preventDefault();
     const f = e.dataTransfer.files[0];
     if (!f?.type.startsWith("image/")) return;
@@ -1252,12 +1298,14 @@ export default function App({ canvasId, onBack }) {
         />
       </div>
 
-      <Toolbar
+  <Toolbar
         activeTool={activeTool}
         onToolChange={(t) => {
+          if (!canEdit) return;
           setActiveTool(t);
           setConnectFrom(null);
         }}
+        disabled={!canEdit}
       />
 
       <ImageDrawer
@@ -1336,18 +1384,22 @@ export default function App({ canvasId, onBack }) {
           >
             {connectionPreview && <ConnectionPreview {...connectionPreview} />}
             {connections.map((c) => (
-              <Connection
-                key={c.id}
-                connection={c}
-                fromElement={elements.find((e) => e.id === c.from)}
-                toElement={elements.find((e) => e.id === c.to)}
-                isEditing={editingConnectionId === c.id}
-                inputRef={connectionInputRef}
-                onEdit={setEditingConnectionId}
-                onBlur={() => setEditingConnectionId(null)}
-                onChange={(connId, text) => updateConnection(connId, text)}
-              />
-            ))}
+            <Connection
+              key={c.id}
+              connection={c}
+              fromElement={elements.find((e) => e.id === c.from)}
+              toElement={elements.find((e) => e.id === c.to)}
+              isEditing={editingConnectionId === c.id}
+              inputRef={connectionInputRef}
+              onEdit={(connId) => {
+                if (!canEdit) return;
+                setEditingConnectionId(connId);
+              }}
+              onBlur={() => setEditingConnectionId(null)}
+              onChange={(connId, text) => updateConnection(connId, text)}
+              readOnly={!canEdit}
+            />
+          ))}
           </svg>
 
           {sortedElements.map((el) => (
@@ -1365,14 +1417,19 @@ export default function App({ canvasId, onBack }) {
               }}
               onContextMenu={(e) => handleContextMenu(e, el.id)}
               onSubmitEdit={(t) => {
+                if (!canEdit) return;
                 if (t.trim()) {
                   updateElement(el.id, { content: t.trim() });
                 }
                 setEditingTextId(null);
               }}
-              onStartEdit={() => !el.isLocked && setEditingTextId(el.id)}
+              onStartEdit={() => {
+                if (!canEdit || el.isLocked) return;
+                setEditingTextId(el.id);
+              }}
               toolbarProps={toolbarActions(el)}
               comments={el.comments || []}
+              canEdit={canEdit}
               currentUserId={userId}
               isAddingComment={newCommentTargetId === el.id}
               commentText={newCommentText}
