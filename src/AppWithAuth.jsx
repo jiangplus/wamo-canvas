@@ -1,0 +1,104 @@
+/**
+ * AppWithAuth - Authentication wrapper for the main app
+ */
+import React from 'react';
+import { db } from './lib/db';
+import App from './App';
+import Auth from './components/auth/Auth';
+import { NEO } from './styles/theme';
+
+function LoadingScreen() {
+  return (
+    <div
+      className="min-h-screen w-full flex items-center justify-center"
+      style={{
+        background: NEO.bg,
+        fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif',
+      }}
+    >
+      {/* Background pattern */}
+      <div
+        className="fixed inset-0 pointer-events-none opacity-[0.03]"
+        style={{
+          backgroundImage: `url('https://www.transparenttextures.com/patterns/natural-paper.png')`
+        }}
+      />
+
+      {/* Dot grid */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `radial-gradient(circle, ${NEO.accent} 1px, transparent 1px)`,
+          backgroundSize: '30px 30px',
+          opacity: 0.6
+        }}
+      />
+
+      <div className="flex flex-col items-center gap-4">
+        <div
+          className="w-16 h-16 flex items-center justify-center animate-pulse"
+          style={{
+            background: NEO.ink,
+            color: NEO.bg,
+            boxShadow: NEO.shadow,
+            borderRadius: NEO.radiusLg
+          }}
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 4V2" /><path d="M15 16v-2" /><path d="M8 9h2" /><path d="M20 9h2" />
+            <path d="M17.8 11.8 19 13" /><path d="M15 9h.01" />
+            <path d="M17.8 6.2 19 5" /><path d="m3 21 9-9" /><path d="M12.2 6.2 11 5" />
+          </svg>
+        </div>
+        <span style={{ color: NEO.inkLight, fontSize: '14px' }}>Loading...</span>
+      </div>
+    </div>
+  );
+}
+
+export default function AppWithAuth() {
+  const { isLoading, user, error } = db.useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (error) {
+    return (
+      <div
+        className="min-h-screen w-full flex items-center justify-center p-8"
+        style={{ background: NEO.bg }}
+      >
+        <div
+          className="text-center p-8"
+          style={{
+            background: NEO.surface,
+            borderRadius: NEO.radiusLg,
+            boxShadow: NEO.shadow,
+          }}
+        >
+          <p style={{ color: '#DC2626', marginBottom: '16px' }}>
+            Authentication error: {error.message}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 text-sm font-medium"
+            style={{
+              background: NEO.ink,
+              color: NEO.bg,
+              borderRadius: NEO.radius,
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
+
+  return <App />;
+}
