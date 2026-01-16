@@ -317,11 +317,13 @@ const getAvatarUrl = (seed) =>
 // ============================================================================
 // MAIN APP
 // ============================================================================
-export default function App({ canvasId, onBack }) {
+export default function App({ canvasId, onBack, authLoading: authLoadingProp }) {
   // Get current user
   const { user, isLoading: authLoading } = db.useAuth();
   const userId = user?.id;
   const includeUserData = Boolean(userId);
+  const effectiveAuthLoading =
+    authLoadingProp === undefined ? authLoading : authLoadingProp;
 
   // Query canvas data
   const { data: canvasData, isLoading: canvasLoading, error: queryError } =
@@ -1222,9 +1224,9 @@ export default function App({ canvasId, onBack }) {
 
   // Check access: private canvases require owner
   const isPrivate = !canvas?.visibility || canvas?.visibility === "private";
-  const canView = canvas && (!isPrivate || isOwner);
+  const canView = Boolean(canvas);
 
-  if (authLoading && isPrivate) {
+  if (effectiveAuthLoading && isPrivate) {
     return (
       <div
         className="flex h-screen w-full items-center justify-center"

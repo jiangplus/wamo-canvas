@@ -110,7 +110,14 @@ export default function AppWithAuth() {
   // Public/protected canvases can be viewed without login
   // The App component will handle access control based on canvas visibility
   if (selectedCanvasId) {
-    return <App canvasId={selectedCanvasId} onBack={handleBack} user={user} />;
+    return (
+      <App
+        canvasId={selectedCanvasId}
+        onBack={handleBack}
+        user={user}
+        authLoading={isLoading || isRestoring}
+      />
+    );
   }
 
   // For other pages (boards, auth), wait for auth to load
