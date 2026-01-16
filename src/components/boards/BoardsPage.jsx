@@ -219,7 +219,7 @@ function CreateBoardModal({ isOpen, onClose, onSubmit }) {
   );
 }
 
-function BoardCard({ board, onSelect, onDelete, onChangeVisibility }) {
+function BoardCard({ board, onSelect, onDelete, onChangeVisibility, isOwner }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const elementCount = board.elements?.length || 0;
@@ -241,6 +241,7 @@ function BoardCard({ board, onSelect, onDelete, onChangeVisibility }) {
   };
 
   const toggleDropdown = (e) => {
+    if (!isOwner) return;
     e.stopPropagation();
     setShowDropdown(!showDropdown);
   };
@@ -261,7 +262,7 @@ function BoardCard({ board, onSelect, onDelete, onChangeVisibility }) {
       onMouseLeave={() => { setShowDelete(false); setShowDropdown(false); }}
     >
       {/* Delete button (on hover) */}
-      {showDelete && (
+      {showDelete && isOwner && (
         <button
           onClick={handleDelete}
           className="absolute top-3 right-3 p-2 rounded-lg transition-all hover:bg-red-50"
@@ -280,8 +281,10 @@ function BoardCard({ board, onSelect, onDelete, onChangeVisibility }) {
           style={{
             background: `${visibilityOption.color}15`,
             color: visibilityOption.color,
+            cursor: isOwner ? 'pointer' : 'default',
+            opacity: isOwner ? 1 : 0.7,
           }}
-          title="Change visibility"
+          title={isOwner ? 'Change visibility' : 'View only'}
         >
           <VisibilityIcon />
           <span>{visibilityOption.label}</span>
@@ -291,7 +294,7 @@ function BoardCard({ board, onSelect, onDelete, onChangeVisibility }) {
         </button>
 
         {/* Visibility dropdown menu */}
-        {showDropdown && (
+        {showDropdown && isOwner && (
           <div
             className="absolute left-0 top-full mt-1 py-1 min-w-[180px] z-10"
             style={{
@@ -365,14 +368,20 @@ function BoardCard({ board, onSelect, onDelete, onChangeVisibility }) {
 export default function BoardsPage({ onSelectBoard }) {
   const user = db.useUser();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const userId = user?.id;
 
   // Query all canvases with their elements count
-  const { data, isLoading } = db.useQuery({
-    canvases: {
-      elements: {},
-      owner: {},
-    },
-  });
+  const { data, isLoading } = db.useQuery(
+    userId
+      ? {
+          canvases: {
+            $: { where: { 'owner.id': userId } },
+            elements: {},
+            owner: {},
+          },
+        }
+      : null,
+  );
 
   const boards = data?.canvases || [];
 
@@ -570,6 +579,7 @@ export default function BoardsPage({ onSelectBoard }) {
                   onSelect={onSelectBoard}
                   onDelete={handleDeleteBoard}
                   onChangeVisibility={handleChangeVisibility}
+                  isOwner={board.owner?.[0]?.id === userId}
                 />
               ))
             }

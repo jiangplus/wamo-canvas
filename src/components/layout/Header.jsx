@@ -56,12 +56,38 @@ export const Logo = ({ onBack, canvasName }) => (
 );
 
 export const UserMenu = () => {
-  const user = db.useUser();
+  const { user } = db.useAuth();
   const [showMenu, setShowMenu] = useState(false);
 
   const handleSignOut = () => {
     db.auth.signOut();
   };
+
+  const handleSignIn = () => {
+    // Clear the hash to go back to login
+    window.location.hash = '';
+    window.location.reload();
+  };
+
+  // If not logged in, show sign in button
+  if (!user) {
+    return (
+      <div className="fixed top-8 right-8 z-[150]">
+        <button
+          onClick={handleSignIn}
+          className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium transition-all hover:scale-[1.02]"
+          style={{
+            background: NEO.ink,
+            color: NEO.bg,
+            boxShadow: NEO.shadow,
+            borderRadius: NEO.radiusLg,
+          }}
+        >
+          Sign In
+        </button>
+      </div>
+    );
+  }
 
   // Generate avatar from email
   const avatarSeed = user?.email?.split('@')[0] || 'user';
@@ -129,7 +155,7 @@ export const UserMenu = () => {
 
               <button
                 onClick={handleSignOut}
-                className="w-full px-4 py-2 text-left text-sm font-medium transition-colors hover:bg-black/5"
+                className="w-full px-4 py-2.5 text-left text-sm font-medium transition-colors hover:bg-black/5"
                 style={{ color: NEO.ink }}
               >
                 Sign out

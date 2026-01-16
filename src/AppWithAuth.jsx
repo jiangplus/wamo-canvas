@@ -86,6 +86,14 @@ export default function AppWithAuth() {
     setSelectedCanvasId(null);
   };
 
+  // If there's a canvas ID in URL, show the canvas immediately (don't wait for auth)
+  // Public/protected canvases can be viewed without login
+  // The App component will handle access control based on canvas visibility
+  if (selectedCanvasId) {
+    return <App canvasId={selectedCanvasId} onBack={handleBack} user={user} />;
+  }
+
+  // For other pages (boards, auth), wait for auth to load
   if (isLoading) {
     return <LoadingScreen />;
   }
@@ -123,15 +131,11 @@ export default function AppWithAuth() {
     );
   }
 
+  // Require login for boards page
   if (!user) {
     return <Auth />;
   }
 
-  // Show boards page if no canvas selected
-  if (!selectedCanvasId) {
-    return <BoardsPage onSelectBoard={handleSelectBoard} />;
-  }
-
-  // Show canvas
-  return <App canvasId={selectedCanvasId} onBack={handleBack} />;
+  // Show boards page
+  return <BoardsPage onSelectBoard={handleSelectBoard} />;
 }

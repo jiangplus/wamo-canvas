@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import { NEO } from '../../styles/theme';
-import { CONNECTION_CONFIG } from '../../utils/constants';
+import { CONNECTION_CONFIG, DEFAULT_ELEMENT_WIDTH } from '../../utils/constants';
 
 export const ConnectionPreview = ({ x1, y1, x2, y2 }) => {
   const midY = (y1 + y2) / 2;
@@ -36,11 +36,20 @@ export const Connection = ({
   onChange 
 }) => {
   if (!fromElement || !toElement) return null;
-  
-  const x1 = fromElement.x + (fromElement.width || 220) / 2;
-  const y1 = fromElement.y + (fromElement.type === 'image' ? 140 : 60);
-  const x2 = toElement.x + (toElement.width || 220) / 2;
-  const y2 = toElement.y + (toElement.type === 'image' ? 140 : 60);
+
+  const getCenter = (el) => {
+    const width = el.width || DEFAULT_ELEMENT_WIDTH;
+    const height =
+      el.height ?? (el.type === 'image' ? 140 : el.type === 'text' ? 60 : 60);
+    return { x: el.x + width / 2, y: el.y + height / 2 };
+  };
+
+  const fromCenter = getCenter(fromElement);
+  const toCenter = getCenter(toElement);
+  const x1 = fromCenter.x;
+  const y1 = fromCenter.y;
+  const x2 = toCenter.x;
+  const y2 = toCenter.y;
   const midX = (x1 + x2) / 2;
   const midY = (y1 + y2) / 2;
   

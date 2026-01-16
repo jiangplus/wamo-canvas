@@ -18,10 +18,10 @@ const rules = {
     },
     bind: {
       isAuthenticated: "auth.id != null",
-      isOwner: "auth.id in data.ref('owner.id')",
+      isOwner: "auth.id != null && auth.id in data.ref('owner.id')",
       isPublic: "data.visibility == 'public'",
       isProtected: "data.visibility == 'protected'",
-      canView: "isOwner || isPublic || isProtected",
+      canView: "isPublic || isProtected || isOwner",
     },
   },
 
@@ -35,11 +35,11 @@ const rules = {
     },
     bind: {
       isAuthenticated: "auth.id != null",
-      isCanvasOwner: "auth.id in data.ref('canvas.owner.id')",
+      isCanvasOwner: "auth.id != null && auth.id in data.ref('canvas.owner.id')",
       isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
       isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
-      canView: "isCanvasOwner || isCanvasPublic || isCanvasProtected",
-      canEdit: "isCanvasOwner || isCanvasPublic",
+      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner",
+      canEdit: "isCanvasPublic || isCanvasOwner",
     },
   },
 
@@ -53,11 +53,11 @@ const rules = {
     },
     bind: {
       isAuthenticated: "auth.id != null",
-      isCanvasOwner: "auth.id in data.ref('canvas.owner.id')",
+      isCanvasOwner: "auth.id != null && auth.id in data.ref('canvas.owner.id')",
       isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
       isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
-      canView: "isCanvasOwner || isCanvasPublic || isCanvasProtected",
-      canEdit: "isCanvasOwner || isCanvasPublic",
+      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner",
+      canEdit: "isCanvasPublic || isCanvasOwner",
     },
   },
 
@@ -71,12 +71,12 @@ const rules = {
     },
     bind: {
       isAuthenticated: "auth.id != null",
-      isAuthor: "auth.id in data.ref('author.id')",
-      isCanvasOwner: "auth.id in data.ref('element.canvas.owner.id')",
+      isAuthor: "auth.id != null && auth.id in data.ref('author.id')",
+      isCanvasOwner: "auth.id != null && auth.id in data.ref('element.canvas.owner.id')",
       isCanvasPublic: "data.ref('element.canvas.visibility')[0] == 'public'",
       isCanvasProtected: "data.ref('element.canvas.visibility')[0] == 'protected'",
-      canView: "isCanvasOwner || isCanvasPublic || isCanvasProtected",
-      canEdit: "isCanvasOwner || isCanvasPublic",
+      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner",
+      canEdit: "isCanvasPublic || isCanvasOwner",
     },
   },
 } satisfies InstantRules;

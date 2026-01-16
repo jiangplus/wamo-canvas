@@ -167,6 +167,7 @@ export const CanvasElement = ({
   toolbarProps,
   // Comments Props
   comments = [],
+  currentUserId,
   isAddingComment,
   commentText,
   onCommentTextChange,
@@ -248,6 +249,7 @@ export const CanvasElement = ({
         {/* 评论列表 */}
         <ElementCommentList 
           comments={comments} 
+          currentUserId={currentUserId}
           onDelete={onDeleteComment}
           onEdit={onEditComment}
           editingId={editingCommentId}
