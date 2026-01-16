@@ -16,6 +16,7 @@ const _schema = i.schema({
     // Canvas/Board - groups elements for collaboration
     canvases: i.entity({
       name: i.string(),
+      visibility: i.string().indexed().optional(), // 'private' | 'protected' | 'public' (default: private)
       createdAt: i.number().indexed(),
     }),
     // Canvas elements (images, text, stickers)

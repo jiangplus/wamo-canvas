@@ -27,6 +27,157 @@ import { Connection, ConnectionPreview } from './components/canvas/Connection';
 import { ContextMenu } from './components/ui/ContextMenu';
 
 // ============================================================================
+// VISIBILITY OPTIONS
+// ============================================================================
+const LockIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+
+const ShieldIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+
+const GlobeIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </svg>
+);
+
+const VISIBILITY_OPTIONS = [
+  { value: 'private', label: 'Private', description: 'Only you can view and edit', icon: LockIcon, color: '#6B7280' },
+  { value: 'protected', label: 'Protected', description: 'Anyone can view, only you can edit', icon: ShieldIcon, color: '#F59E0B' },
+  { value: 'public', label: 'Public', description: 'Anyone can view and edit', icon: GlobeIcon, color: '#10B981' },
+];
+
+// ============================================================================
+// VISIBILITY BUTTON COMPONENT
+// ============================================================================
+function VisibilityButton({ visibility, onChangeVisibility, isOwner }) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const visibilityOption = VISIBILITY_OPTIONS.find(o => o.value === visibility) || VISIBILITY_OPTIONS[0];
+  const VisibilityIcon = visibilityOption.icon;
+
+  const handleVisibilityChange = (newVisibility) => {
+    onChangeVisibility(newVisibility);
+    setShowDropdown(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => isOwner && setShowDropdown(!showDropdown)}
+        className="flex items-center gap-2 px-4 py-2.5 transition-all hover:scale-[1.02]"
+        style={{
+          background: NEO.surface,
+          backdropFilter: 'blur(20px)',
+          border: `1px solid ${NEO.border}`,
+          boxShadow: NEO.shadow,
+          borderRadius: NEO.radiusLg,
+          cursor: isOwner ? 'pointer' : 'default',
+        }}
+        title={isOwner ? 'Change visibility' : visibilityOption.description}
+      >
+        <div
+          className="flex items-center justify-center w-7 h-7 rounded-md"
+          style={{
+            background: `${visibilityOption.color}15`,
+            color: visibilityOption.color,
+          }}
+        >
+          <VisibilityIcon />
+        </div>
+        <span className="text-sm font-medium" style={{ color: NEO.ink }}>
+          {visibilityOption.label}
+        </span>
+        {isOwner && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={NEO.inkLight}
+            strokeWidth="2"
+            style={{ marginLeft: '2px' }}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        )}
+      </button>
+
+      {showDropdown && (
+        <>
+          <div
+            className="fixed inset-0 z-[140]"
+            onClick={() => setShowDropdown(false)}
+          />
+          <div
+            className="absolute right-0 top-full mt-2 py-2 min-w-[220px] z-[150] animate-popIn"
+            style={{
+              background: NEO.surface,
+              backdropFilter: 'blur(20px)',
+              border: `1px solid ${NEO.border}`,
+              borderRadius: NEO.radiusLg,
+              boxShadow: NEO.shadowHover,
+            }}
+          >
+            <div
+              className="px-4 py-2 mb-1 text-xs font-medium uppercase tracking-wide"
+              style={{ color: NEO.inkLight }}
+            >
+              Visibility
+            </div>
+            {VISIBILITY_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const isSelected = visibility === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => handleVisibilityChange(option.value)}
+                  className="w-full px-4 py-2.5 flex items-center gap-3 text-left transition-all hover:bg-black/5"
+                  style={{
+                    background: isSelected ? `${option.color}08` : 'transparent',
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-center w-8 h-8 rounded-lg"
+                    style={{
+                      background: `${option.color}15`,
+                      color: option.color,
+                    }}
+                  >
+                    <Icon />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium" style={{ color: NEO.ink }}>
+                      {option.label}
+                    </div>
+                    <div className="text-xs" style={{ color: NEO.inkLight }}>
+                      {option.description}
+                    </div>
+                  </div>
+                  {isSelected && (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={option.color} strokeWidth="2.5">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // CONSTANTS
 // ============================================================================
 const INITIAL_PICTURE_POOL = {
@@ -89,6 +240,7 @@ export default function App({ canvasId, onBack }) {
     canvasId ? {
       canvases: {
         $: { where: { id: canvasId } },
+        owner: {},
         elements: {
           creator: {},
           comments: { author: {} },
@@ -103,6 +255,10 @@ export default function App({ canvasId, onBack }) {
 
   // ===== DERIVED DATA FROM INSTANTDB =====
   const canvas = canvasData?.canvases?.[0];
+  const canvasOwnerId = canvas?.owner?.[0]?.id;
+  const isOwner = userId && canvasOwnerId && userId === canvasOwnerId;
+  const canvasVisibility = canvas?.visibility || 'private';
+
   const elements = useMemo(() => {
     if (!canvas?.elements) return [];
     return canvas.elements.map(el => ({
@@ -268,6 +424,11 @@ export default function App({ canvasId, onBack }) {
     if (!commentId) return;
     db.transact([tx.comments[commentId].delete()]);
   }, []);
+
+  const changeCanvasVisibility = useCallback((visibility) => {
+    if (!canvasId || !isOwner) return;
+    db.transact([tx.canvases[canvasId].update({ visibility })]);
+  }, [canvasId, isOwner]);
 
   // ===== INIT EFFECTS =====
   useEffect(() => {
@@ -649,6 +810,16 @@ export default function App({ canvasId, onBack }) {
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[10]" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/natural-paper.png')` }} />
 
       <Header onBack={onBack} canvasName={canvas?.name} />
+
+      {/* Visibility Button - positioned top-right before UserMenu */}
+      <div className="fixed top-8 right-[200px] z-[150]">
+        <VisibilityButton
+          visibility={canvasVisibility}
+          onChangeVisibility={changeCanvasVisibility}
+          isOwner={isOwner}
+        />
+      </div>
+
       <Toolbar activeTool={activeTool} onToolChange={(t) => { setActiveTool(t); setConnectFrom(null); }} />
 
       <ImageDrawer isOpen={activeTool === 'image'} onClose={() => setActiveTool(null)} activeTab={activeTab} onTabChange={setActiveTab} picturePool={picturePool} drawerImageAngles={drawerImageAngles} onUploadClick={() => fileInputRef.current?.click()} onImageDragStart={(img, x, y) => setDraggedFromDrawer({ type: 'image', data: img, x, y })} fileInputRef={fileInputRef} onFileUpload={handleFileUpload} />
