@@ -477,6 +477,44 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   const [drawerImageAngles, setDrawerImageAngles] = useState({});
   const [drawerStickerAngles, setDrawerStickerAngles] = useState({});
 
+  const room = useMemo(() => db.room("canvas", canvasId), [canvasId]);
+  const { peers: presencePeers, publishPresence } = room.usePresence({
+    keys: ["selectedElementId", "userName", "avatar"],
+    user: false,
+  });
+
+  useEffect(() => {
+    if (!userId) return;
+    publishPresence({
+      userName: currentUserName,
+      avatar: currentUserAvatar,
+    });
+  }, [currentUserAvatar, currentUserName, publishPresence, userId]);
+
+  useEffect(() => {
+    const activeElementId =
+      canEdit && (editingTextId || (interactionState !== "idle" && selectedId))
+        ? editingTextId || selectedId
+        : null;
+    publishPresence({ selectedElementId: activeElementId || null });
+  }, [canEdit, editingTextId, interactionState, publishPresence, selectedId]);
+
+  const activeEditorsByElement = useMemo(() => {
+    const map = {};
+    Object.values(presencePeers || {}).forEach((peer) => {
+      if (!peer?.selectedElementId) return;
+      const elementId = peer.selectedElementId;
+      if (!map[elementId]) map[elementId] = [];
+      const name = peer.userName || "Guest";
+      map[elementId].push({
+        id: peer.peerId,
+        name,
+        avatar: peer.avatar || getAvatarUrl(name),
+      });
+    });
+    return map;
+  }, [presencePeers]);
+
   // ===== COMPUTED =====
   const wordCount = useMemo(
     () => (textInput.trim() ? textInput.trim().split(/\s+/).length : 0),
@@ -1500,6 +1538,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
               canEdit={canEdit}
               currentUserId={userId}
               currentUserAvatar={currentUserAvatar}
+              activeEditors={activeEditorsByElement[el.id] || []}
               isAddingComment={newCommentTargetId === el.id}
               commentText={newCommentText}
               onCommentTextChange={setNewCommentText}

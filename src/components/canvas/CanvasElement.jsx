@@ -5,6 +5,7 @@
 import React from 'react';
 import { NEO } from '../../styles/theme';
 import { IconLock } from '../../icons';
+import Avatar from '../ui/Avatar';
 import ElementToolbar from '../toolbar/ElementToolbar';
 import { ElementCommentList, CommentInput } from '../ui/Comment';
 
@@ -170,6 +171,7 @@ export const CanvasElement = ({
   canEdit = false,
   currentUserId,
   currentUserAvatar,
+  activeEditors = [],
   isAddingComment,
   commentText,
   onCommentTextChange,
@@ -236,6 +238,34 @@ export const CanvasElement = ({
           <LockOverlay borderRadius={currentBorderRadius} />
         )}
       </div>
+
+      {activeEditors.length > 0 && (
+        <div
+          className="absolute -right-2 top-2 flex flex-col gap-1 z-[120]"
+          style={{ pointerEvents: 'none' }}
+        >
+          {activeEditors.slice(0, 3).map((editor) => (
+            <div
+              key={editor.id}
+              className="flex items-center gap-1 px-1.5 py-1"
+              style={{
+                background: 'white',
+                border: `1px solid ${NEO.border}`,
+                borderRadius: NEO.radius,
+                boxShadow: NEO.shadowSoft,
+              }}
+            >
+              <Avatar src={editor.avatar} size={18} />
+              <span
+                className="text-[9px] font-semibold max-w-[80px] truncate"
+                style={{ color: NEO.ink }}
+              >
+                {editor.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* 评论区域 - 显示在元素下方，宽度与元素一致 */}
       <div style={{ width: element.type === 'text' ? '100%' : scaledWidth, marginTop: '8px' }}>

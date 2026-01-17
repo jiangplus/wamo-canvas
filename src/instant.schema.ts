@@ -109,6 +109,8 @@ const _schema = i.schema({
         odUpdatedAt: i.number(),
         cursor: i.json(), // { x, y }
         selectedElementId: i.string().optional(),
+        userName: i.string().optional(),
+        avatar: i.string().optional(),
       }),
     },
   },
