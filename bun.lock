@@ -12,6 +12,7 @@
       },
       "devDependencies": {
         "@eslint/js": "^9.39.1",
+        "@instantdb/admin": "^0.22.105",
         "@types/react": "^19.2.5",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^5.1.1",
@@ -144,6 +145,8 @@
     "@humanwhocodes/module-importer": ["@humanwhocodes/module-importer@1.0.1", "", {}, "sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA=="],
 
     "@humanwhocodes/retry": ["@humanwhocodes/retry@0.4.3", "", {}, "sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ=="],
+
+    "@instantdb/admin": ["@instantdb/admin@0.22.105", "", { "dependencies": { "@instantdb/core": "0.22.105", "@instantdb/version": "0.22.105", "eventsource": "^4.0.0" } }, "sha512-s5h+Pma54B2Y7t+NLGZ7fy9rpHm7LojJlsUwTdL7BMattIQgaRRj93dB1Szl4VErvhEs95DhC5WpdPxsEjM80w=="],
 
     "@instantdb/core": ["@instantdb/core@0.22.105", "", { "dependencies": { "@instantdb/version": "0.22.105", "mutative": "^1.0.10", "uuid": "^11.1.0" } }, "sha512-Hq+ShLar0dPA3EcErxyBK3GGSigV8/nHgTFzEKKXcuI76eSC3eEVvYHPUdDDTSGvwzGBzHrWcCHjPeuIkykL7Q=="],
 

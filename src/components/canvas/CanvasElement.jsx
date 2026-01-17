@@ -169,6 +169,7 @@ export const CanvasElement = ({
   comments = [],
   canEdit = false,
   currentUserId,
+  currentUserAvatar,
   isAddingComment,
   commentText,
   onCommentTextChange,
@@ -246,6 +247,7 @@ export const CanvasElement = ({
             onSubmit={onAddCommentSubmit}
             onCancel={onAddCommentCancel}
             inputRef={commentInputRef}
+            avatarUrl={currentUserAvatar}
           />
         )}
         

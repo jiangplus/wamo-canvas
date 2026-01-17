@@ -359,6 +359,9 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     Boolean(userId) && (isOwner || (isPrivate && !ownerKnown));
   const canEditName =
     Boolean(userId) && (isOwner || (isPrivate && !ownerKnown));
+  const currentUserName = user?.email?.split("@")[0] || "User";
+  const currentUserAvatar = getAvatarUrl(currentUserName || "user");
+  const [ownCommentIds, setOwnCommentIds] = useState([]);
 
   const elements = useMemo(() => {
     if (!canvas?.elements) return [];
@@ -370,17 +373,32 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       avatar: getAvatarUrl(el.creator?.[0]?.email?.split("@")[0] || "unknown"),
       // Map comments
       comments:
-        el.comments?.map((c) => ({
-          ...c,
-          authorId: c.author?.[0]?.id || null,
-          author: c.author?.[0]?.email?.split("@")[0] || "Unknown",
-          avatar: getAvatarUrl(
-            c.author?.[0]?.email?.split("@")[0] || "unknown",
-          ),
-          createdAt: c.createdAt,
-        })) || [],
+        el.comments?.map((c) => {
+          const authorId = c.author?.[0]?.id || null;
+          const isOwnFallback =
+            !authorId && userId && ownCommentIds.includes(c.id);
+          const authorName =
+            c.author?.[0]?.email?.split("@")[0] ||
+            (authorId && authorId === userId
+              ? currentUserName
+              : isOwnFallback
+                ? currentUserName
+                : "Unknown");
+          return {
+            ...c,
+            authorId,
+            author: authorName,
+            avatar:
+              authorId && authorId === userId
+                ? currentUserAvatar
+                : isOwnFallback
+                  ? currentUserAvatar
+                  : getAvatarUrl(authorName || "unknown"),
+            createdAt: c.createdAt,
+          };
+        }) || [],
     }));
-  }, [canvas]);
+  }, [canvas, currentUserAvatar, currentUserName, ownCommentIds, userId]);
 
   const connections = useMemo(() => {
     if (!canvas?.connections) return [];
@@ -560,6 +578,9 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     (elementId, text) => {
       if (!elementId || !text.trim() || !userId || !canEdit) return;
       const commentId = id();
+      setOwnCommentIds((prev) =>
+        prev.includes(commentId) ? prev : [...prev, commentId],
+      );
 
       db.transact([
         tx.comments[commentId]
@@ -1473,6 +1494,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
               comments={el.comments || []}
               canEdit={canEdit}
               currentUserId={userId}
+              currentUserAvatar={currentUserAvatar}
               isAddingComment={newCommentTargetId === el.id}
               commentText={newCommentText}
               onCommentTextChange={setNewCommentText}

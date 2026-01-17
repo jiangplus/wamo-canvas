@@ -52,6 +52,7 @@ export const CommentInput = ({
   onSubmit, 
   onCancel, 
   inputRef,
+  avatarUrl,
   isEditing = false
 }) => {
   const handleKeyDown = (e) => {
@@ -80,7 +81,13 @@ export const CommentInput = ({
     >
       <div className="flex gap-2 items-start">
          <div className="mt-1">
-            <Avatar src="https://api.dicebear.com/7.x/notionists/svg?seed=Me" size={24} />
+            <Avatar
+              src={
+                avatarUrl ||
+                "https://api.dicebear.com/7.x/notionists/svg?seed=Me"
+              }
+              size={24}
+            />
          </div>
          <textarea
             ref={inputRef}
