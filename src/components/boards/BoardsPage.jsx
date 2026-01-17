@@ -376,7 +376,11 @@ export default function BoardsPage({ onSelectBoard }) {
     userId
       ? {
           canvases: {
-            $: { where: { 'owner.id': userId } },
+            $: {
+              where: {
+                or: [{ 'owner.id': userId }, { 'memberships.user.id': userId }],
+              },
+            },
             elements: {},
             owner: {},
           },

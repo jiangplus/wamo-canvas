@@ -332,7 +332,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         ? {
             canvases: {
               $: { where: { id: canvasId } },
-              ...(includeUserData ? { owner: {} } : {}),
+              ...(includeUserData ? { owner: {}, memberships: { user: {} } } : {}),
               elements: includeUserData
                 ? { creator: {}, comments: { author: {} } }
                 : { comments: {} },
@@ -349,16 +349,27 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   const canvas = canvasData?.canvases?.[0];
   const canvasOwnerId = canvas?.owner?.[0]?.id;
   const isOwner = userId && canvasOwnerId && userId === canvasOwnerId;
+  const isMember = Boolean(
+    userId &&
+      canvas?.memberships?.some((membership) => {
+        const users = Array.isArray(membership.user)
+          ? membership.user
+          : membership.user
+            ? [membership.user]
+            : [];
+        return users.some((u) => u.id === userId);
+      }),
+  );
   const canvasVisibility = canvas?.visibility || "private";
   const isPublic = canvasVisibility === "public";
   const isPrivate = canvasVisibility === "private";
   const ownerKnown = Boolean(canvasOwnerId);
   const canEdit =
-    Boolean(userId) && (isPublic || isOwner || (isPrivate && !ownerKnown));
+    Boolean(userId) &&
+    (isOwner || (isMember && !isPrivate));
   const canChangeVisibility =
-    Boolean(userId) && (isOwner || (isPrivate && !ownerKnown));
-  const canEditName =
-    Boolean(userId) && (isOwner || (isPrivate && !ownerKnown));
+    Boolean(userId) && isOwner;
+  const canEditName = Boolean(userId) && isOwner;
   const currentUserName = user?.email?.split("@")[0] || "User";
   const currentUserAvatar = getAvatarUrl(currentUserName || "user");
   const [ownCommentIds, setOwnCommentIds] = useState([]);
@@ -665,6 +676,26 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     },
     [canvasId, canEditName],
   );
+
+  const [isJoining, setIsJoining] = useState(false);
+  const canJoin =
+    Boolean(userId) && !isOwner && !isMember && !isPrivate && Boolean(canvas);
+
+  const handleJoinCanvas = async () => {
+    if (!canvasId || !userId || !canJoin) return;
+    setIsJoining(true);
+    try {
+      const membershipId = id();
+      await db.transact([
+        tx.canvas_memberships[membershipId]
+          .update({ createdAt: Date.now() })
+          .link({ canvas: canvasId })
+          .link({ user: userId }),
+      ]);
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   // ===== INIT EFFECTS =====
   useEffect(() => {
@@ -1646,6 +1677,24 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
           {connectFrom
             ? "👆 Click another element to connect"
             : "👆 Click an element to start"}
+        </div>
+      )}
+      {canJoin && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[150]">
+          <button
+            onClick={handleJoinCanvas}
+            disabled={isJoining}
+            className="px-6 py-2.5 text-sm font-medium transition-all hover:scale-[1.02]"
+            style={{
+              background: isJoining ? NEO.inkLight : NEO.ink,
+              color: NEO.bg,
+              borderRadius: NEO.radiusLg,
+              boxShadow: NEO.shadowHover,
+              cursor: isJoining ? "not-allowed" : "pointer",
+            }}
+          >
+            {isJoining ? "Joining..." : "Join to edit"}
+          </button>
         </div>
       )}
       {lassoState.active && !lassoState.isDrawing && (

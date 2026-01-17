@@ -46,6 +46,10 @@ const _schema = i.schema({
       text: i.string(),
       createdAt: i.number().indexed(),
     }),
+    // Canvas memberships (participants)
+    canvas_memberships: i.entity({
+      createdAt: i.number().indexed(),
+    }),
   },
   links: {
     $usersLinkedPrimaryUser: {
@@ -99,6 +103,25 @@ const _schema = i.schema({
     commentAuthor: {
       forward: { on: "comments", has: "one", label: "author" },
       reverse: { on: "$users", has: "many", label: "comments" },
+    },
+    // Canvas membership links
+    membershipCanvas: {
+      forward: {
+        on: "canvas_memberships",
+        has: "one",
+        label: "canvas",
+        onDelete: "cascade",
+      },
+      reverse: { on: "canvases", has: "many", label: "memberships" },
+    },
+    membershipUser: {
+      forward: {
+        on: "canvas_memberships",
+        has: "one",
+        label: "user",
+        onDelete: "cascade",
+      },
+      reverse: { on: "$users", has: "many", label: "canvasMemberships" },
     },
   },
   rooms: {

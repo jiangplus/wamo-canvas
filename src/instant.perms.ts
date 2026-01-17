@@ -19,9 +19,10 @@ const rules = {
     bind: {
       isAuthenticated: "auth.id != null",
       isOwner: "auth.id != null && auth.id in data.ref('owner.id')",
+      isMember: "auth.id != null && auth.id in data.ref('memberships.user.id')",
       isPublic: "data.visibility == 'public'",
       isProtected: "data.visibility == 'protected'",
-      canView: "isPublic || isProtected || isOwner",
+      canView: "isPublic || isProtected || isOwner || isMember",
     },
   },
 
@@ -36,10 +37,11 @@ const rules = {
     bind: {
       isAuthenticated: "auth.id != null",
       isCanvasOwner: "auth.id != null && auth.id in data.ref('canvas.owner.id')",
+      isCanvasMember: "auth.id != null && auth.id in data.ref('canvas.memberships.user.id')",
       isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
       isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
-      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner",
-      canEdit: "isAuthenticated && (isCanvasPublic || isCanvasOwner)",
+      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner || isCanvasMember",
+      canEdit: "isAuthenticated && (isCanvasOwner || isCanvasMember)",
     },
   },
 
@@ -54,10 +56,11 @@ const rules = {
     bind: {
       isAuthenticated: "auth.id != null",
       isCanvasOwner: "auth.id != null && auth.id in data.ref('canvas.owner.id')",
+      isCanvasMember: "auth.id != null && auth.id in data.ref('canvas.memberships.user.id')",
       isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
       isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
-      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner",
-      canEdit: "isAuthenticated && (isCanvasPublic || isCanvasOwner)",
+      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner || isCanvasMember",
+      canEdit: "isAuthenticated && (isCanvasOwner || isCanvasMember)",
     },
   },
 
@@ -73,10 +76,29 @@ const rules = {
       isAuthenticated: "auth.id != null",
       isAuthor: "auth.id != null && auth.id in data.ref('author.id')",
       isCanvasOwner: "auth.id != null && auth.id in data.ref('element.canvas.owner.id')",
+      isCanvasMember: "auth.id != null && auth.id in data.ref('element.canvas.memberships.user.id')",
       isCanvasPublic: "data.ref('element.canvas.visibility')[0] == 'public'",
       isCanvasProtected: "data.ref('element.canvas.visibility')[0] == 'protected'",
-      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner",
-      canEdit: "isAuthenticated && (isCanvasPublic || isCanvasOwner)",
+      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner || isCanvasMember",
+      canEdit: "isAuthenticated && (isCanvasOwner || isCanvasMember)",
+    },
+  },
+  canvas_memberships: {
+    allow: {
+      view: "canView",
+      create: "canCreate",
+      update: "false",
+      delete: "canDelete",
+    },
+    bind: {
+      isAuthenticated: "auth.id != null",
+      isSelf: "auth.id != null && auth.id in data.ref('user.id')",
+      isCanvasOwner: "auth.id != null && auth.id in data.ref('canvas.owner.id')",
+      isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
+      isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
+      canView: "isSelf || isCanvasOwner",
+      canCreate: "isAuthenticated && (isCanvasPublic || isCanvasProtected)",
+      canDelete: "isSelf || isCanvasOwner",
     },
   },
 } satisfies InstantRules;
