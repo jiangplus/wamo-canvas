@@ -384,6 +384,10 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
               : isOwnFallback
                 ? currentUserName
                 : "Unknown");
+          const isAuthor =
+            (authorId && authorId === userId) ||
+            isOwnFallback ||
+            (!authorId && authorName === currentUserName);
           return {
             ...c,
             authorId,
@@ -394,6 +398,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
                 : isOwnFallback
                   ? currentUserAvatar
                   : getAvatarUrl(authorName || "unknown"),
+            isAuthor,
             createdAt: c.createdAt,
           };
         }) || [],
