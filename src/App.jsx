@@ -353,7 +353,8 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   const isPublic = canvasVisibility === "public";
   const isPrivate = canvasVisibility === "private";
   const ownerKnown = Boolean(canvasOwnerId);
-  const canEdit = Boolean(userId) && (isPublic || isOwner);
+  const canEdit =
+    Boolean(userId) && (isPublic || isOwner || (isPrivate && !ownerKnown));
   const canChangeVisibility =
     Boolean(userId) && (isOwner || (isPrivate && !ownerKnown));
   const canEditName =
