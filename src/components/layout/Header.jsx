@@ -2,7 +2,7 @@
  * Header Component
  * 顶部头部组件 - Logo 和在线用户
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NEO } from '../../styles/theme';
 import { IconMagic } from '../../icons';
 import Avatar from '../ui/Avatar';
@@ -16,45 +16,106 @@ const BackIcon = () => (
   </svg>
 );
 
-export const Logo = ({ onBack, canvasName }) => (
-  <div className="fixed top-8 left-8 z-[150] flex items-center gap-3">
-    {onBack && (
-      <button
-        onClick={onBack}
-        className="w-14 h-14 flex items-center justify-center transition-all hover:scale-105"
+export const Logo = ({ onBack, canvasName, canEditName, onRename }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftName, setDraftName] = useState(canvasName || '');
+
+  useEffect(() => {
+    setDraftName(canvasName || '');
+  }, [canvasName]);
+
+  const finishRename = () => {
+    if (!canEditName) {
+      setIsEditing(false);
+      return;
+    }
+    const nextName = draftName.trim();
+    setIsEditing(false);
+    if (nextName && nextName !== canvasName) {
+      onRename?.(nextName);
+    } else {
+      setDraftName(canvasName || '');
+    }
+  };
+
+  return (
+    <div className="fixed top-8 left-8 z-[150] flex items-center gap-3">
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="w-14 h-14 flex items-center justify-center transition-all hover:scale-105"
+          style={{
+            background: NEO.surface,
+            color: NEO.ink,
+            boxShadow: NEO.shadow,
+            borderRadius: NEO.radiusLg,
+            border: `1px solid ${NEO.border}`,
+          }}
+          title="Back to Boards"
+        >
+          <BackIcon />
+        </button>
+      )}
+      <div
+        className="w-14 h-14 flex items-center justify-center"
         style={{
-          background: NEO.surface,
-          color: NEO.ink,
+          background: NEO.ink,
+          color: NEO.bg,
           boxShadow: NEO.shadow,
-          borderRadius: NEO.radiusLg,
-          border: `1px solid ${NEO.border}`,
+          borderRadius: NEO.radiusLg
         }}
-        title="Back to Boards"
       >
-        <BackIcon />
-      </button>
-    )}
-    <div
-      className="w-14 h-14 flex items-center justify-center"
-      style={{
-        background: NEO.ink,
-        color: NEO.bg,
-        boxShadow: NEO.shadow,
-        borderRadius: NEO.radiusLg
-      }}
-    >
-      <IconMagic />
+        <IconMagic />
+      </div>
+      {canvasName && (
+        <div className="min-w-[120px] max-w-[200px]">
+          {isEditing ? (
+            <input
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onBlur={finishRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') finishRename();
+                if (e.key === 'Escape') {
+                  setDraftName(canvasName || '');
+                  setIsEditing(false);
+                }
+              }}
+              className="text-sm font-medium w-full outline-none"
+              style={{
+                color: NEO.ink,
+                background: 'white',
+                border: `1px solid ${NEO.border}`,
+                borderRadius: NEO.radius,
+                padding: '6px 8px'
+              }}
+              autoFocus
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (!canEditName) return;
+                setIsEditing(true);
+              }}
+              className="text-left text-sm font-medium w-full truncate"
+              style={{
+                color: NEO.ink,
+                cursor: canEditName ? 'text' : 'default',
+                background: 'transparent',
+                border: 'none',
+                padding: 0
+              }}
+              title={canEditName ? 'Rename canvas' : canvasName}
+            >
+              {canvasName}
+            </button>
+          )}
+        </div>
+      )}
     </div>
-    {canvasName && (
-      <span
-        className="text-sm font-medium max-w-[200px] truncate"
-        style={{ color: NEO.ink }}
-      >
-        {canvasName}
-      </span>
-    )}
-  </div>
-);
+  );
+};
 
 export const UserMenu = () => {
   const { user } = db.useAuth();
@@ -214,9 +275,14 @@ export const OnlineUsers = ({ users = [1, 2, 3] }) => (
   </div>
 );
 
-const Header = ({ onBack, canvasName }) => (
+const Header = ({ onBack, canvasName, canEditName, onRename }) => (
   <>
-    <Logo onBack={onBack} canvasName={canvasName} />
+    <Logo
+      onBack={onBack}
+      canvasName={canvasName}
+      canEditName={canEditName}
+      onRename={onRename}
+    />
     <UserMenu />
   </>
 );

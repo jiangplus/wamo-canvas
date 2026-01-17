@@ -351,15 +351,12 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   const isOwner = userId && canvasOwnerId && userId === canvasOwnerId;
   const canvasVisibility = canvas?.visibility || "private";
   const isPublic = canvasVisibility === "public";
-  const isProtected = canvasVisibility === "protected";
   const isPrivate = canvasVisibility === "private";
   const ownerKnown = Boolean(canvasOwnerId);
-  const canEdit =
-    Boolean(userId) &&
-    (isPublic ||
-      (isProtected && isOwner) ||
-      (isPrivate && (ownerKnown ? isOwner : true)));
+  const canEdit = Boolean(userId) && (isPublic || isOwner);
   const canChangeVisibility =
+    Boolean(userId) && (isOwner || (isPrivate && !ownerKnown));
+  const canEditName =
     Boolean(userId) && (isOwner || (isPrivate && !ownerKnown));
 
   const elements = useMemo(() => {
@@ -592,6 +589,16 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       db.transact([tx.canvases[canvasId].update({ visibility })]);
     },
     [canvasId, canChangeVisibility],
+  );
+
+  const changeCanvasName = useCallback(
+    (name) => {
+      if (!canvasId || !canEditName) return;
+      const nextName = name.trim();
+      if (!nextName) return;
+      db.transact([tx.canvases[canvasId].update({ name: nextName })]);
+    },
+    [canvasId, canEditName],
   );
 
   // ===== INIT EFFECTS =====
@@ -1316,7 +1323,12 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         }}
       />
 
-      <Header onBack={onBack} canvasName={canvas?.name} />
+      <Header
+        onBack={onBack}
+        canvasName={canvas?.name}
+        canEditName={canEditName}
+        onRename={changeCanvasName}
+      />
 
       {/* Visibility Button - positioned top-right before UserMenu */}
       <div className="fixed top-8 right-[280px] z-[160]">

@@ -244,9 +244,23 @@ export default function Auth() {
 
             <button
               type="button"
-              onClick={handleBack}
+              onClick={handleSendCode}
               disabled={loading}
               className="w-full mt-3 py-2.5 text-sm font-medium transition-all"
+              style={{
+                background: 'transparent',
+                color: NEO.ink,
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Resend code
+            </button>
+
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={loading}
+              className="w-full mt-2 py-2.5 text-sm font-medium transition-all"
               style={{
                 background: 'transparent',
                 color: NEO.inkLight,
