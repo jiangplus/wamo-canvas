@@ -231,7 +231,9 @@ export const CanvasElement = ({
         {element.type === 'text' && <TextElement element={element} scale={scale} isEditing={isEditing} editRef={editRef} onSubmitEdit={onSubmitEdit} onStartEdit={onStartEdit} />}
         
         {/* 锁定覆盖 */}
-        {element.isLocked && <LockOverlay borderRadius={currentBorderRadius} />}
+        {element.isLocked && isSelected && (
+          <LockOverlay borderRadius={currentBorderRadius} />
+        )}
       </div>
 
       {/* 评论区域 - 显示在元素下方，宽度与元素一致 */}
