@@ -454,6 +454,9 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     initialScale: 1,
     initialViewport: { x: 0, y: 0 },
   });
+  const skipMouseDownRef = useRef(false);
+  const skipMouseMoveRef = useRef(false);
+  const skipMouseUpRef = useRef(false);
 
   // ===== LOCAL UI STATE =====
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
@@ -838,17 +841,38 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   }, [viewport]);
 
   // ===== MOUSE HANDLERS =====
+  const getEventPoint = (event) => {
+    if ("touches" in event && event.touches?.length) {
+      const touch = event.touches[0];
+      return { clientX: touch.clientX, clientY: touch.clientY, target: touch.target || event.target };
+    }
+    if ("changedTouches" in event && event.changedTouches?.length) {
+      const touch = event.changedTouches[0];
+      return { clientX: touch.clientX, clientY: touch.clientY, target: touch.target || event.target };
+    }
+    return { clientX: event.clientX, clientY: event.clientY, target: event.target };
+  };
+
+  const shouldIgnoreMouseEvent = (ref) => {
+    if (ref.current) {
+      ref.current = false;
+      return true;
+    }
+    return false;
+  };
+
   const handleCanvasMouseDown = (e) => {
     if (!canEdit && interactionState !== "panning") {
       setSelectedId(null);
       setContextMenu(null);
     }
+    const { clientX, clientY, target } = getEventPoint(e);
     if (lassoState.active && lassoState.elementId) {
-      if (e.target.closest(`#content-${lassoState.elementId}`)) {
+      if (target.closest(`#content-${lassoState.elementId}`)) {
         setLassoState((p) => ({
           ...p,
           isDrawing: true,
-          points: [{ x: e.clientX, y: e.clientY }],
+          points: [{ x: clientX, y: clientY }],
         }));
         return;
       }
@@ -861,9 +885,9 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     }
 
     if (
-      e.target === viewportRef.current ||
-      e.target.classList.contains("canvas-content") ||
-      e.target.classList.contains("canvas-grid")
+      target === viewportRef.current ||
+      target.classList.contains("canvas-content") ||
+      target.classList.contains("canvas-grid")
     ) {
       setSelectedId(null);
       setConnectFrom(null);
@@ -872,15 +896,26 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       dragRef.current = {
         id: null,
         type: "pan",
-        startX: e.clientX,
-        startY: e.clientY,
+        startX: clientX,
+        startY: clientY,
         initialViewport: { x: viewport.x, y: viewport.y },
       };
       setInteractionState("panning");
     }
   };
 
+  const handleCanvasMouseDownWrapper = (e) => {
+    if (shouldIgnoreMouseEvent(skipMouseDownRef)) return;
+    handleCanvasMouseDown(e);
+  };
+
+  const handleCanvasPointerDown = (e) => {
+    skipMouseDownRef.current = true;
+    handleCanvasMouseDown(e);
+  };
+
   const handleElementMouseDown = (e, elId, type) => {
+    const { clientX, clientY } = getEventPoint(e);
     e.stopPropagation();
     if (!canEdit) {
       setSelectedId(elId);
@@ -893,7 +928,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         setLassoState((p) => ({
           ...p,
           isDrawing: true,
-          points: [{ x: e.clientX, y: e.clientY }],
+          points: [{ x: clientX, y: clientY }],
         }));
       } else {
         setLassoState({
@@ -935,14 +970,14 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     const centerX = rect ? rect.left + rect.width / 2 : 0;
     const centerY = rect ? rect.top + rect.height / 2 : 0;
     const initialDist = Math.sqrt(
-      Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2),
+      Math.pow(clientX - centerX, 2) + Math.pow(clientY - centerY, 2),
     );
 
     dragRef.current = {
       id: elId,
       type,
-      startX: e.clientX,
-      startY: e.clientY,
+      startX: clientX,
+      startY: clientY,
       initialX: el.x,
       initialY: el.y,
       initialW: el.width,
@@ -961,14 +996,25 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     );
   };
 
+  const handleElementMouseDownWrapper = (e, elId, type) => {
+    if (shouldIgnoreMouseEvent(skipMouseDownRef)) return;
+    handleElementMouseDown(e, elId, type);
+  };
+
+  const handleElementPointerDown = (e, elId, type) => {
+    skipMouseDownRef.current = true;
+    handleElementMouseDown(e, elId, type);
+  };
+
   const handleMouseMove = (e) => {
-    setMousePosition({ x: e.clientX, y: e.clientY });
+    const { clientX, clientY } = getEventPoint(e);
+    setMousePosition({ x: clientX, y: clientY });
 
     if (lassoState.isDrawing) {
       if (!canEdit) return;
       setLassoState((p) => ({
         ...p,
-        points: [...p.points, { x: e.clientX, y: e.clientY }],
+        points: [...p.points, { x: clientX, y: clientY }],
       }));
       return;
     }
@@ -976,14 +1022,14 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     if (draggedFromDrawer) {
       setDraggedFromDrawer({
         ...draggedFromDrawer,
-        x: e.clientX,
-        y: e.clientY,
+        x: clientX,
+        y: clientY,
       });
       return;
     }
     if (interactionState === "idle") return;
-    const dx = e.clientX - dragRef.current.startX,
-      dy = e.clientY - dragRef.current.startY;
+    const dx = clientX - dragRef.current.startX,
+      dy = clientY - dragRef.current.startY;
     if (interactionState === "panning")
       setViewport((p) => ({
         ...p,
@@ -1010,7 +1056,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       if (!el || initialDist === 0) return;
 
       const currentDist = Math.sqrt(
-        Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2),
+        Math.pow(clientX - centerX, 2) + Math.pow(clientY - centerY, 2),
       );
       const ratio = currentDist / initialDist;
 
@@ -1028,14 +1074,25 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         centerY,
       } = dragRef.current;
       const curA =
-        Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+        Math.atan2(clientY - centerY, clientX - centerX) * (180 / Math.PI);
       const strA =
         Math.atan2(startY - centerY, startX - centerX) * (180 / Math.PI);
       updateElement(elId, { rotation: initialRot + (curA - strA) });
     }
   };
 
+  const handleMouseMoveWrapper = (e) => {
+    if (shouldIgnoreMouseEvent(skipMouseMoveRef)) return;
+    handleMouseMove(e);
+  };
+
+  const handlePointerMove = (e) => {
+    skipMouseMoveRef.current = true;
+    handleMouseMove(e);
+  };
+
   const handleMouseUp = (e) => {
+    const { clientX, clientY } = getEventPoint(e);
     if (lassoState.isDrawing) {
       if (!canEdit) return;
       const { elementId, points } = lassoState;
@@ -1086,7 +1143,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         setInteractionState("idle");
         return;
       }
-      const wp = getWorldCoords(e.clientX, e.clientY);
+      const wp = getWorldCoords(clientX, clientY);
       addElement({
         type: draggedFromDrawer.type,
         content:
@@ -1117,12 +1174,23 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     dragRef.current = { id: null, type: null };
   };
 
+  const handleMouseUpWrapper = (e) => {
+    if (shouldIgnoreMouseEvent(skipMouseUpRef)) return;
+    handleMouseUp(e);
+  };
+
+  const handlePointerUp = (e) => {
+    skipMouseUpRef.current = true;
+    handleMouseUp(e);
+  };
+
   // ===== CONTEXT MENU & COMMENTS =====
   const handleContextMenu = (e, elementId) => {
     if (!canEdit) return;
     e.preventDefault();
     if (!elementId) return;
-    setContextMenu({ x: e.clientX, y: e.clientY, targetId: elementId });
+    const { clientX, clientY } = getEventPoint(e);
+    setContextMenu({ x: clientX, y: clientY, targetId: elementId });
   };
 
   const startAddingComment = () => {
@@ -1406,8 +1474,10 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         background: NEO.bg,
         color: NEO.ink,
       }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
+      onMouseMove={handleMouseMoveWrapper}
+      onPointerMove={handlePointerMove}
+      onMouseUp={handleMouseUpWrapper}
+      onPointerUp={handlePointerUp}
       onClick={() => setContextMenu(null)}
     >
       <div
@@ -1488,8 +1558,10 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
             : interactionState === "panning"
               ? "grabbing"
               : "grab",
+          touchAction: "none",
         }}
-        onMouseDown={handleCanvasMouseDown}
+        onMouseDown={handleCanvasMouseDownWrapper}
+        onPointerDown={handleCanvasPointerDown}
         onContextMenu={(e) => handleContextMenu(e, null)}
         onDrop={handleCanvasDrop}
         onDragOver={(e) => e.preventDefault()}
@@ -1544,7 +1616,8 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
               isSelected={selectedId === el.id}
               isEditing={editingTextId === el.id}
               editRef={editTextRef}
-              onMouseDown={handleElementMouseDown}
+              onMouseDown={handleElementMouseDownWrapper}
+              onPointerDown={handleElementPointerDown}
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedId(el.id);
