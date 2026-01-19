@@ -52,6 +52,7 @@ export const CommentInput = ({
   onSubmit, 
   onCancel, 
   inputRef,
+  avatarUrl,
   isEditing = false
 }) => {
   const handleKeyDown = (e) => {
@@ -80,7 +81,13 @@ export const CommentInput = ({
     >
       <div className="flex gap-2 items-start">
          <div className="mt-1">
-            <Avatar src="https://api.dicebear.com/7.x/notionists/svg?seed=Me" size={24} />
+            <Avatar
+              src={
+                avatarUrl ||
+                "https://api.dicebear.com/7.x/notionists/svg?seed=Me"
+              }
+              size={24}
+            />
          </div>
          <textarea
             ref={inputRef}
@@ -157,7 +164,12 @@ export const ElementCommentList = ({
                 <span className="font-bold">{comment.author}</span>
                 <span className="mx-1 opacity-50">|</span>
                 <span className="opacity-80">
-                  {comment.timestamp ? new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                  {comment.createdAt
+                    ? new Date(comment.createdAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : 'Just now'}
                 </span>
               </div>
             </div>
@@ -175,7 +187,7 @@ export const ElementCommentList = ({
               </div>
 
               {/* Action Buttons - Outside the bubble, top aligned */}
-              {comment.author === 'Me' && (
+              {comment.isAuthor && (
                 <div className="absolute left-full top-0 ml-2 flex gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
                   <RoundedIconButton 
                     onClick={(e) => { e.stopPropagation(); onEdit && onEdit(comment); }}

@@ -3,7 +3,7 @@
  * 元素状态管理 - 处理元素的增删改查
  */
 import { useState, useCallback, useMemo } from 'react';
-import { generateId, getAvatarUrl, DEFAULT_ELEMENT_WIDTH } from '../utils/constants';
+import { generateId, DEFAULT_ELEMENT_WIDTH } from '../utils/constants';
 import { generateMagazineStyle, getRandomImageShape } from '../utils/styleGenerators';
 
 // 初始元素
@@ -16,8 +16,8 @@ const createInitialElements = () => [{
   width: DEFAULT_ELEMENT_WIDTH,
   height: null,
   rotation: 0,
-  creator: 'Ruoz',
-  avatar: getAvatarUrl('Ruoz'),
+  creatorId: 'user-ruoz',
+  creatorEmail: 'ruoz@example.com',
   reactions: { '❤️': ['Ruoz', 'Gong'] },
   isLocked: false,
   texture: 'none',
@@ -56,8 +56,8 @@ export const useElements = (saveHistory) => {
     
     const newElement = {
       id: generateId(),
-      creator: 'Me',
-      avatar: getAvatarUrl('Me'),
+      creatorId: 'local-user',
+      creatorEmail: 'me@example.com',
       reactions: {},
       isLocked: false,
       texture: 'none',
@@ -82,7 +82,6 @@ export const useElements = (saveHistory) => {
       id: generateId('dp'),
       x: el.x + 40,
       y: el.y + 40,
-      creator: 'Me',
       reactions: {},
       zIndex: newZIndex
     };
@@ -129,7 +128,6 @@ export const useElements = (saveHistory) => {
       id: generateId('cp'),
       x: targetEl ? targetEl.x + 40 : clipboard.x + 40,
       y: targetEl ? targetEl.y + 40 : clipboard.y + 40,
-      creator: 'Me',
       reactions: {},
       zIndex: newZIndex
     };
