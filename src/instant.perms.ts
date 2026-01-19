@@ -41,8 +41,8 @@ const rules = {
     allow: {
       view: "canView",
       create: "canEdit",
-      update: "canEdit",
-      delete: "canEdit",
+      update: "canEdit && (!isLocked || isCreator)",
+      delete: "canEdit && (!isLocked || isCreator)",
     },
     bind: {
       isAuthenticated: "auth.id != null",
@@ -52,6 +52,8 @@ const rules = {
       isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
       canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner || isCanvasMember",
       canEdit: "isAuthenticated && (isCanvasOwner || isCanvasMember)",
+      isCreator: "auth.id != null && auth.id in data.ref('creator.id')",
+      isLocked: "data.isLocked == true",
     },
   },
 
