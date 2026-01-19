@@ -221,7 +221,15 @@ function CreateBoardModal({ isOpen, onClose, onSubmit }) {
   );
 }
 
-function BoardCard({ board, onSelect, onDelete, onChangeVisibility, isOwner }) {
+function BoardCard({
+  board,
+  onSelect,
+  onDelete,
+  onChangeVisibility,
+  onJoin,
+  isOwner,
+  isMember,
+}) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const elementCount = board.elements?.length || 0;
@@ -229,12 +237,12 @@ function BoardCard({ board, onSelect, onDelete, onChangeVisibility, isOwner }) {
   const visibilityOption = VISIBILITY_OPTIONS.find(o => o.value === visibility) || VISIBILITY_OPTIONS[0];
   const VisibilityIcon = visibilityOption.icon;
   const owner = board.owner?.[0];
-  const ownerName =
-    owner?.email ||
-    board.ownerEmail ||
-    owner?.displayName ||
-    owner?.email?.split('@')[0] ||
-    (owner?.id ? 'Owner' : 'Unknown');
+  const ownerEmail = owner?.email;
+  const ownerName = ownerEmail
+    ? ownerEmail.split('@')[0]
+    : owner?.id
+      ? 'Owner'
+      : 'Unknown';
   const ownerAvatar =
     owner?.imageURL ||
     `https://api.dicebear.com/7.x/notionists/svg?seed=${ownerName || 'owner'}`;
@@ -258,6 +266,15 @@ function BoardCard({ board, onSelect, onDelete, onChangeVisibility, isOwner }) {
     setShowDropdown(!showDropdown);
   };
 
+  const handleJoin = (e) => {
+    e.stopPropagation();
+    onJoin(board.id);
+  };
+
+  const canJoin =
+    !isMember &&
+    (isOwner || visibility !== 'private');
+
   return (
     <div
       className="group relative cursor-pointer transition-all hover:scale-[1.02]"
@@ -278,10 +295,29 @@ function BoardCard({ board, onSelect, onDelete, onChangeVisibility, isOwner }) {
         <button
           onClick={handleDelete}
           className="absolute top-3 right-3 p-2 rounded-lg transition-all hover:bg-red-50"
-          style={{ color: '#DC2626' }}
+          style={{
+            color: '#DC2626',
+            right: canJoin ? '56px' : '12px',
+          }}
           title="Delete board"
         >
           <TrashIcon />
+        </button>
+      )}
+
+      {canJoin && (
+        <button
+          onClick={handleJoin}
+          className="absolute top-3 right-3 px-2.5 py-1 text-xs font-semibold transition-all"
+          style={{
+            background: NEO.ink,
+            color: NEO.bg,
+            borderRadius: NEO.radius,
+            boxShadow: NEO.shadowSoft,
+          }}
+          title="Join this board"
+        >
+          Join
         </button>
       )}
 
@@ -401,6 +437,7 @@ export default function BoardsPage({ onSelectBoard }) {
             },
             elements: {},
             owner: {},
+            memberships: { user: {} },
           },
         }
       : null,
@@ -409,17 +446,28 @@ export default function BoardsPage({ onSelectBoard }) {
   const boards = data?.canvases || [];
 
   const handleCreateBoard = async (name, visibility) => {
-    if (!user?.id) return;
+    if (!user?.id || !user?.email) return;
 
     const boardId = id();
     await db.transact([
       tx.canvases[boardId].update({
         name,
         visibility,
-        ownerEmail: user.email || null,
         createdAt: Date.now(),
       }).link({ owner: user.id }),
     ]);
+
+    try {
+      const membershipId = id();
+      await db.transact([
+        tx.canvas_memberships[membershipId]
+          .update({ createdAt: Date.now() })
+          .link({ canvas: boardId })
+          .link({ user: user.id }),
+      ]);
+    } catch (err) {
+      console.warn('Failed to auto-join board:', err);
+    }
 
     // Open the new board
     onSelectBoard(boardId);
@@ -431,6 +479,17 @@ export default function BoardsPage({ onSelectBoard }) {
 
   const handleChangeVisibility = async (boardId, visibility) => {
     await db.transact([tx.canvases[boardId].update({ visibility })]);
+  };
+
+  const handleJoinBoard = async (boardId) => {
+    if (!userId) return;
+    const membershipId = id();
+    await db.transact([
+      tx.canvas_memberships[membershipId]
+        .update({ createdAt: Date.now() })
+        .link({ canvas: boardId })
+        .link({ user: userId }),
+    ]);
   };
 
   const handleSignOut = () => {
@@ -598,20 +657,36 @@ export default function BoardsPage({ onSelectBoard }) {
             {/* Existing boards */}
             {boards
               .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-              .map(board => (
-                <BoardCard
-                  key={board.id}
-                  board={board}
-                  onSelect={onSelectBoard}
-                  onDelete={handleDeleteBoard}
-                  onChangeVisibility={handleChangeVisibility}
-                  isOwner={
-                    board.owner?.[0]?.id
-                      ? board.owner?.[0]?.id === userId
-                      : Boolean(userId)
-                  }
-                />
-              ))
+              .map((board) => {
+                const isOwner =
+                  board.owner?.[0]?.id
+                    ? board.owner?.[0]?.id === userId
+                    : Boolean(userId);
+                const isMember = Boolean(
+                  userId &&
+                    board.memberships?.some((membership) => {
+                      const users = Array.isArray(membership.user)
+                        ? membership.user
+                        : membership.user
+                          ? [membership.user]
+                          : [];
+                      return users.some((u) => u.id === userId);
+                    }),
+                );
+
+                return (
+                  <BoardCard
+                    key={board.id}
+                    board={board}
+                    onSelect={onSelectBoard}
+                    onDelete={handleDeleteBoard}
+                    onChangeVisibility={handleChangeVisibility}
+                    onJoin={handleJoinBoard}
+                    isOwner={isOwner}
+                    isMember={isMember}
+                  />
+                );
+              })
             }
           </div>
         )}

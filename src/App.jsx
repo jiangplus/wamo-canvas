@@ -15,7 +15,11 @@ import { db, id, tx } from "./lib/db";
 
 // Theme & Utils
 import { NEO } from "./styles/theme";
-import { DEFAULT_ELEMENT_WIDTH, STICKER_LIST } from "./utils/constants";
+import {
+  DEFAULT_ELEMENT_WIDTH,
+  STICKER_LIST,
+  getAvatarUrl,
+} from "./utils/constants";
 import { screenToWorld } from "./utils/coordinates";
 import {
   generateMagazineStyle,
@@ -311,9 +315,6 @@ const simplifyPoints = (points, tolerance = 3) => {
   return currentPoints;
 };
 
-const getAvatarUrl = (seed) =>
-  `https://api.dicebear.com/7.x/notionists/svg?seed=${seed}`;
-
 // ============================================================================
 // MAIN APP
 // ============================================================================
@@ -321,7 +322,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   // Get current user
   const { user, isLoading: authLoading } = db.useAuth();
   const userId = user?.id;
-  const includeUserData = Boolean(userId);
   const effectiveAuthLoading =
     authLoadingProp === undefined ? authLoading : authLoadingProp;
 
@@ -330,16 +330,15 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     db.useQuery(
       canvasId
         ? {
-            canvases: {
-              $: { where: { id: canvasId } },
-              ...(includeUserData ? { owner: {}, memberships: { user: {} } } : {}),
-              elements: includeUserData
-                ? { creator: {}, comments: { author: {} } }
-                : { comments: {} },
-              connections: {
-                fromElement: {},
-                toElement: {},
-              },
+          canvases: {
+            $: { where: { id: canvasId } },
+            owner: {},
+            memberships: { user: {} },
+            elements: { creator: {}, comments: { author: {} } },
+            connections: {
+              fromElement: {},
+              toElement: {},
+            },
             },
           }
         : null,
@@ -364,12 +363,16 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   const isPublic = canvasVisibility === "public";
   const isPrivate = canvasVisibility === "private";
   const ownerKnown = Boolean(canvasOwnerId);
+  // Important: keep client-side editability aligned with Instant permissions.
+  // We allow editing for owners and members (membership is only joinable on non-private canvases).
+  // This also makes legacy/orphaned private canvases (missing owner link but with membership) editable.
   const canEdit =
     Boolean(userId) &&
-    (isOwner || (isMember && !isPrivate));
+    (isOwner || isMember);
   const canChangeVisibility =
     Boolean(userId) && isOwner;
   const canEditName = Boolean(userId) && isOwner;
+  const hasValidOwner = Boolean(userId && user?.email);
   const currentUserName = user?.email?.split("@")[0] || "User";
   const currentUserAvatar = getAvatarUrl(currentUserName || "user");
   const [ownCommentIds, setOwnCommentIds] = useState([]);
@@ -378,10 +381,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     if (!canvas?.elements) return [];
     return canvas.elements.map((el) => ({
       ...el,
-      // Add creator info for display
-      creatorId: el.creator?.[0]?.id || null,
-      creatorName: el.creator?.[0]?.email?.split("@")[0] || "Unknown",
-      avatar: getAvatarUrl(el.creator?.[0]?.email?.split("@")[0] || "unknown"),
       // Map comments
       comments:
         el.comments?.map((c) => {
@@ -554,14 +553,13 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   const updateElement = useCallback((elementId, updates) => {
     if (!elementId || !canEdit) return;
     // Filter out non-schema fields
-    const { creatorName, avatar, comments, creator, ...schemaUpdates } =
-      updates;
+    const { comments, creator, ...schemaUpdates } = updates;
     db.transact([tx.elements[elementId].update(schemaUpdates)]);
   }, [canEdit]);
 
   const addElement = useCallback(
     (data) => {
-      if (!canvasId || !userId || !canEdit) return;
+      if (!canvasId || !userId || !canEdit || !hasValidOwner) return;
       const elementId = id();
       const zIndex = maxZIndex + 1;
 
@@ -590,7 +588,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       setSelectedId(elementId);
       return elementId;
     },
-    [canvasId, userId, maxZIndex, canEdit],
+    [canvasId, userId, maxZIndex, canEdit, hasValidOwner],
   );
 
   const deleteElement = useCallback(

@@ -6,6 +6,7 @@ import React from 'react';
 import { NEO } from '../../styles/theme';
 import { IconButton } from '../ui/IconButton';
 import Avatar from '../ui/Avatar';
+import { getAvatarUrl } from '../../utils/constants';
 import {
   IconUndo,
   IconShuffle,
@@ -32,6 +33,9 @@ export const ElementToolbar = ({
   onDelete,
 }) => {
   if (!element) return null;
+  const creatorEmail = element.creator?.[0]?.email;
+  const avatarSeed = creatorEmail ? creatorEmail.split('@')[0] : 'user';
+  const creatorAvatar = getAvatarUrl(avatarSeed);
 
   return (
     <div 
@@ -39,7 +43,7 @@ export const ElementToolbar = ({
       style={{ left: 0, bottom: `calc(100% + 12px)` }} 
       onMouseDown={e => e.stopPropagation()}
     >
-      <Avatar src={element.avatar} size={40} />
+      <Avatar src={creatorAvatar} size={40} />
       
       <div 
         className="flex items-center gap-0.5 px-1.5 py-1" 

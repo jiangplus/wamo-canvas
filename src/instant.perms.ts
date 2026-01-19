@@ -109,7 +109,7 @@ const rules = {
       isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
       isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
       canView: "isSelf || isCanvasOwner",
-      canCreate: "isAuthenticated && (isCanvasPublic || isCanvasProtected)",
+      canCreate: "isAuthenticated && (isCanvasOwner || isCanvasPublic || isCanvasProtected)",
       canDelete: "isSelf || isCanvasOwner",
     },
   },
