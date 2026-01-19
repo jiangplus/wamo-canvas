@@ -17,6 +17,7 @@ const _schema = i.schema({
     canvases: i.entity({
       name: i.string(),
       visibility: i.string().indexed().optional(), // 'private' | 'protected' | 'public' (default: private)
+      ownerEmail: i.string().optional(),
       createdAt: i.number().indexed(),
     }),
     // Canvas elements (images, text, stickers)

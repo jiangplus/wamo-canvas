@@ -7,6 +7,16 @@
 import type { InstantRules } from "@instantdb/react";
 
 const rules = {
+  $users: {
+    allow: {
+      view: "true",
+    },
+    fields: {
+      email: "true",
+      imageURL: "true",
+      displayName: "true",
+    },
+  },
   // Canvases - visibility-based access control
   // null visibility is treated as 'private' (default)
   canvases: {

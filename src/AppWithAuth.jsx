@@ -80,7 +80,7 @@ export default function AppWithAuth() {
     if (!token) return;
     setIsRestoring(true);
     db.auth
-      .signInWithCustomToken(token)
+      .signInWithToken(token)
       .catch(() => {
         clearStoredAuthToken();
       })

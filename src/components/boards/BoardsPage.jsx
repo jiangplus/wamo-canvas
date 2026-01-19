@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { db, id, tx } from '../../lib/db';
 import { NEO } from '../../styles/theme';
 import { clearStoredAuthToken } from '../../lib/authStorage';
+import Avatar from '../ui/Avatar';
 
 // Icons
 const PlusIcon = () => (
@@ -227,6 +228,16 @@ function BoardCard({ board, onSelect, onDelete, onChangeVisibility, isOwner }) {
   const visibility = board.visibility || 'private';
   const visibilityOption = VISIBILITY_OPTIONS.find(o => o.value === visibility) || VISIBILITY_OPTIONS[0];
   const VisibilityIcon = visibilityOption.icon;
+  const owner = board.owner?.[0];
+  const ownerName =
+    owner?.email ||
+    board.ownerEmail ||
+    owner?.displayName ||
+    owner?.email?.split('@')[0] ||
+    (owner?.id ? 'Owner' : 'Unknown');
+  const ownerAvatar =
+    owner?.imageURL ||
+    `https://api.dicebear.com/7.x/notionists/svg?seed=${ownerName || 'owner'}`;
 
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -354,6 +365,13 @@ function BoardCard({ board, onSelect, onDelete, onChangeVisibility, isOwner }) {
         {board.name || 'Untitled Board'}
       </h3>
 
+      <div className="flex items-center gap-2 mb-2">
+        <Avatar src={ownerAvatar} size={20} />
+        <span className="text-xs font-medium" style={{ color: NEO.inkLight }}>
+          {ownerName}
+        </span>
+      </div>
+
       <div
         className="flex items-center gap-3 text-xs"
         style={{ color: NEO.inkLight }}
@@ -398,6 +416,7 @@ export default function BoardsPage({ onSelectBoard }) {
       tx.canvases[boardId].update({
         name,
         visibility,
+        ownerEmail: user.email || null,
         createdAt: Date.now(),
       }).link({ owner: user.id }),
     ]);
