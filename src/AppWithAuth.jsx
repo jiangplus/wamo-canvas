@@ -6,6 +6,7 @@ import { db } from './lib/db';
 import App from './App';
 import Auth from './components/auth/Auth';
 import BoardsPage from './components/boards/BoardsPage';
+import LandingPage from './components/landing/LandingPage';
 import { NEO } from './styles/theme';
 import { getStoredAuthToken, clearStoredAuthToken } from './lib/authStorage';
 
@@ -62,6 +63,7 @@ export default function AppWithAuth() {
   const { isLoading, user, error } = db.useAuth();
   const [selectedCanvasId, setSelectedCanvasId] = useState(null);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const restoreAttemptedRef = useRef(false);
 
   // Check for canvas ID in URL hash or localStorage
@@ -104,6 +106,14 @@ export default function AppWithAuth() {
 
   const handleBack = () => {
     setSelectedCanvasId(null);
+  };
+
+  const handleLoginClick = () => {
+    setShowAuthModal(true);
+  };
+
+  const handleCloseAuthModal = () => {
+    setShowAuthModal(false);
   };
 
   // If there's a canvas ID in URL, show the canvas immediately (don't wait for auth)
@@ -162,9 +172,27 @@ export default function AppWithAuth() {
     );
   }
 
-  // Require login for boards page
+  // Show landing page when no user is logged in
   if (!user) {
-    return <Auth />;
+    return (
+      <div className="relative">
+        <LandingPage onLoginClick={handleLoginClick} />
+        {showAuthModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="relative">
+              <Auth isModal={true} />
+              <button
+                onClick={handleCloseAuthModal}
+                className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors"
+                style={{ color: NEO.ink }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   // Show boards page
