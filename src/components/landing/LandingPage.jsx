@@ -83,8 +83,8 @@ const Win95Popup = ({ onOkClick }) => (
     // Using em units for internal sizing, driven by fontSize (vw)
     className="absolute z-40 bg-[#c0c0c0] border-t-2 border-l-2 border-white border-b-2 border-r-2 border-black shadow-[1px_1px_0px_0px_#000]"
     style={{ 
-      top: '36vw', 
-      left: '35vw',
+      top: '40vw', 
+      left: '40vw',
       // Responsive font size base with minimum limit but no maximum limit for bigger screens
       fontSize: 'max(10px, 0.8vw)', 
       width: '26em',
@@ -230,6 +230,8 @@ export default function LandingPage({ onLoginClick }) {
           dragMomentum={false}
           // 关键修改：左右手限制 Left Right Constraints，确保不乱跑
           dragConstraints={item.drag === "y" ? { left: 0, right: 0 } : undefined}
+          whileHover={{ scale: 1.005 }}
+          whileTap={{ scale: 0.95 }}
           className={`absolute ${item.className}`}
           style={{ top: item.initial.top, left: item.initial.left, zIndex: item.zIndex }}
           initial={{ rotate: item.initial.rotate, opacity: 0, scale: 0.8 }}
@@ -245,12 +247,10 @@ export default function LandingPage({ onLoginClick }) {
 
       {/* --- LAYER TOP: Small Circles (Draggable) --- */}
       <div className="absolute inset-0 z-[60] pointer-events-none">
-        {/* Pointer events auto wrapper for decorations */}
-        <div className="w-full h-full pointer-events-auto">
-          {decorations.smallCircles.map(c => (
-            <DraggableCircle key={c.id} size={c.size} color={c.color} opacity={1} style={{ position: 'absolute', top: `${c.pos.top}%`, left: `${c.pos.left}%` }} />
-          ))}
-        </div>
+        {/* Removed the blocking pointer-events-auto wrapper. The circles themselves have pointer-events: auto */}
+        {decorations.smallCircles.map(c => (
+          <DraggableCircle key={c.id} size={c.size} color={c.color} opacity={1} style={{ position: 'absolute', top: `${c.pos.top}%`, left: `${c.pos.left}%` }} />
+        ))}
       </div>
 
       {/* --- Noise Overlay (Top of all layers) --- */}
