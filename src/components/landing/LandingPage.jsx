@@ -51,7 +51,7 @@ const DraggableCircle = ({ size, color, opacity = 1, zIndex = 0, style }) => (
 // Using vw for top positions to maintain relative vertical layout regardless of aspect ratio
 const stickers = [
   // Text String: top ~17.4vw
-  { id: 'text-string', src: '/assets/text on a string.svg', alt: 'Text String', className: 'w-[72%]', initial: { top: '17.4vw', left: '8%', rotate: -3 }, zIndex: 5, drag: false }, 
+  { id: 'text-string', src: '/assets/text on a string.svg', alt: 'Text String', className: 'w-[72%]', initial: { top: '12vw', left: '9vw', rotate: -3 }, zIndex: 5, drag: false }, 
   
   // Flyer: top ~ -3vw
   { id: 'flyer', src: '/assets/flyer.png', alt: 'Flyer', className: 'w-[21.5%] brightness-95 sepia-[0.3] contrast-[0.9]', initial: { top: '-3vw', left: '70%', rotate: 100 }, zIndex: 10, drag: true },
@@ -66,7 +66,7 @@ const stickers = [
   { id: 'cat', src: '/assets/cat_astronaut.png', alt: 'Cat', className: 'w-[28%]', initial: { top: '-1.2vw', left: '-1%', rotate: 120 }, zIndex: 20, drag: true },
   
   // Phone: top 31.8vw (preserved relative to string)
-  { id: 'phone', src: '/assets/phone.png', alt: 'Phone', className: 'w-[17%]', initial: { top: '29.5vw', left: '79vw', rotate: 3 }, zIndex: 31, drag: true },
+  { id: 'phone', src: '/assets/phone.png', alt: 'Phone', className: 'w-[17%]', initial: { top: '27vw', left: '79vw', rotate: 3 }, zIndex: 31, drag: true },
   
   // Hand Right: top 1.8vw
   { id: 'hand-right', src: '/assets/right_hand.png', alt: 'Right Hand', className: 'w-[34%]', initial: { top: '1.8vw', left: '68%', rotate: 9.8 }, zIndex: 30, drag: "y" },
@@ -83,10 +83,10 @@ const Win95Popup = ({ onOkClick }) => (
     // Using em units for internal sizing, driven by fontSize (vw)
     className="absolute z-40 bg-[#c0c0c0] border-t-2 border-l-2 border-white border-b-2 border-r-2 border-black shadow-[1px_1px_0px_0px_#000]"
     style={{ 
-      top: '44vw', 
-      left: '40vw',
+      top: '36vw', 
+      left: '35vw',
       // Responsive font size base with minimum limit but no maximum limit for bigger screens
-      fontSize: 'max(10px, 1.1vw)', 
+      fontSize: 'max(10px, 0.8vw)', 
       width: '26em',
       padding: '0.2em'
     }}
@@ -121,7 +121,7 @@ const Win95Popup = ({ onOkClick }) => (
 
 const KeyCluster = ({ onClick }) => (
   // top: 50% -> 30vw
-  <div className="absolute z-50 flex items-center justify-center pointer-events-auto" style={{ top: '30vw', left: '62%', transform: 'translate(-50%, 0)' }}>
+  <div className="absolute z-50 flex items-center justify-center pointer-events-auto" style={{ top: '27vw', left: '62%', transform: 'translate(-50%, 0)' }}>
     {["/assets/key right arrow.png", "/assets/create key.png", "/assets/together key.png"].map((src, index) => (
       <motion.img 
         key={index} 
@@ -154,16 +154,24 @@ const DraggableWord = ({ text, color, rotate, fontClass, fontSize, zIndex = 50 }
 
 const RansomNote = () => (
   // top: 37% -> 22.2vw
-  <div className="absolute z-20 flex flex-col items-center justify-center w-full pointer-events-none" style={{ top: '22vw', left: '0vw' }}>
-    <div className="flex flex-wrap items-center justify-center gap-[0.4vw] max-w-[90vw] px-4 select-none pointer-events-none">
-      {/* Font sizes in vw to preserve relative scale with images */}
-      <DraggableWord text="the" color="#B0D85A" rotate={2} fontClass="font-arbotek" fontSize="2.5vw" />
-      <DraggableWord text="UNIVERSE" color="#1A00AE" rotate={-1} fontClass="font-handjet font-bold" fontSize="4.5vw" />
-      <span className="text-gray-800 font-arbotek italic ml-[0.2vw] leading-none pointer-events-auto" style={{ fontSize: '2.5vw' }}>is just one big</span>
-      <div className="w-full h-1 hidden md:block"></div>
-      <DraggableWord text="COLLAGE" color="#EC5B00" rotate={3} fontClass="font-bygonest" fontSize="3.5vw" />
-      <span className="text-gray-600 font-arbotek mx-[0.2vw] leading-none pointer-events-auto" style={{ fontSize: '2.5vw' }}>on an</span>
-      <DraggableWord text="infinite canvas" color="#865792" rotate={-2} fontClass="font-krifon italic" fontSize="3.5vw" />
+  // Added responsive padding to ensure line breaks happen as intended or scale down enough
+  <div className="absolute z-20 flex flex-col items-center justify-center w-full pointer-events-none" style={{ top: '20vw', left: '0vw' }}>
+    <div className="flex flex-col items-center justify-center gap-[0.4vw] w-full max-w-[90vw] select-none pointer-events-none">
+      
+      {/* Line 1 */}
+      <div className="flex flex-wrap items-center justify-center gap-[0.4vw]">
+        <DraggableWord text="the" color="#B0D85A" rotate={2} fontClass="font-arbotek" fontSize="2.5vw" />
+        <DraggableWord text="UNIVERSE" color="#1A00AE" rotate={-1} fontClass="font-handjet font-bold" fontSize="4.5vw" />
+        <span className="text-gray-800 font-arbotek italic ml-[0.2vw] leading-none pointer-events-auto" style={{ fontSize: '2.5vw' }}>is just one big</span>
+      </div>
+
+      {/* Line 2 */}
+      <div className="flex flex-wrap items-center justify-center gap-[0.4vw]">
+        <DraggableWord text="COLLAGE" color="#EC5B00" rotate={3} fontClass="font-bygonest" fontSize="3.5vw" />
+        <span className="text-gray-600 font-arbotek mx-[0.2vw] leading-none pointer-events-auto" style={{ fontSize: '2.5vw' }}>on an</span>
+        <DraggableWord text="infinite canvas" color="#865792" rotate={-2} fontClass="font-krifon italic" fontSize="3.5vw" />
+      </div>
+
     </div>
   </div>
 );
