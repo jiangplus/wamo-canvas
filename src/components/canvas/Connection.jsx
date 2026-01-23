@@ -36,7 +36,15 @@ export const Connection = ({
   onChange,
   readOnly = false
 }) => {
-  if (!fromElement || !toElement) return null;
+  // #region agent log
+  fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Connection.jsx:render',message:'Connection component render',data:{connectionId:connection?.id,from:connection?.from,to:connection?.to,hasFromElement:!!fromElement,hasToElement:!!toElement},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H7'})}).catch(()=>{});
+  // #endregion
+  if (!fromElement || !toElement) {
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Connection.jsx:earlyReturn',message:'Connection returning null - missing element',data:{connectionId:connection?.id,from:connection?.from,to:connection?.to,fromElementMissing:!fromElement,toElementMissing:!toElement},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H7'})}).catch(()=>{});
+    // #endregion
+    return null;
+  }
 
   const getCenter = (el) => {
     const width = el.width || DEFAULT_ELEMENT_WIDTH;

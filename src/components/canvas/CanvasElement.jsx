@@ -24,9 +24,14 @@ const GrainOverlay = ({ borderRadius }) => (
 
 // 选框组件
 const SelectionFrame = ({ onMouseDown, onPointerDown }) => {
-  const triggerMouse = (e, type) => onMouseDown?.(e, type);
-  const triggerPointer = (e, type) =>
+  const triggerMouse = (e, type) => {
+    e.stopPropagation();
+    onMouseDown?.(e, type);
+  };
+  const triggerPointer = (e, type) => {
+    e.stopPropagation();
     onPointerDown ? onPointerDown(e, type) : onMouseDown?.(e, type);
+  };
   return (
   <>
     {/* Visible Framing Box */}

@@ -18,6 +18,8 @@ import {
   IconUnlock,
   IconTrash,
   IconRotateCcw, // Added
+  IconConnect,
+  IconLink,
 } from '../../icons';
 
 export const ElementToolbar = ({
@@ -29,6 +31,8 @@ export const ElementToolbar = ({
   onReset, // Re-enabled
   onMoveUpLayer,
   onDuplicate,
+  onConnect,
+  onAddLink,
   onToggleLock,
   onDelete,
 }) => {
@@ -106,6 +110,14 @@ export const ElementToolbar = ({
           <IconCopy />
         </IconButton>
         
+        <IconButton onClick={onConnect} title="Add Connection">
+          <IconConnect />
+        </IconButton>
+        
+        <IconButton onClick={onAddLink} title="Add URL">
+          <IconLink />
+        </IconButton>
+
         <IconButton 
           onClick={onToggleLock} 
           title={element.isLocked ? "Unlock" : "Lock"} 

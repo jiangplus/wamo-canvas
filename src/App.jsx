@@ -417,10 +417,14 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
   const connections = useMemo(() => {
     if (!canvas?.connections) return [];
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:connections:memo',message:'connections memo computing',data:{rawConnections:canvas.connections.map(c=>({id:c.id,fromElement:c.fromElement,toElement:c.toElement}))},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H6'})}).catch(()=>{});
+    // #endregion
+    // FIX: fromElement/toElement are "has one" relationships, so they're objects not arrays
     return canvas.connections.map((c) => ({
       id: c.id,
-      from: c.fromElement?.[0]?.id,
-      to: c.toElement?.[0]?.id,
+      from: c.fromElement?.id,
+      to: c.toElement?.id,
       text: c.text || "",
     }));
   }, [canvas]);
@@ -457,6 +461,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   const skipMouseDownRef = useRef(false);
   const skipMouseMoveRef = useRef(false);
   const skipMouseUpRef = useRef(false);
+  const ignoreNextClickRef = useRef(false);
 
   // ===== LOCAL UI STATE =====
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
@@ -605,8 +610,19 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
   const addConnection = useCallback(
     (fromId, toId) => {
-      if (!canvasId || !fromId || !toId || !canEdit) return;
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:addConnection:entry',message:'addConnection called',data:{fromId,toId,canvasId,canEdit},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
+      // #endregion
+      if (!canvasId || !fromId || !toId || !canEdit) {
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:addConnection:earlyReturn',message:'addConnection early return',data:{canvasIdMissing:!canvasId,fromIdMissing:!fromId,toIdMissing:!toId,canEditFalse:!canEdit},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
+        // #endregion
+        return;
+      }
       const connectionId = id();
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:addConnection:transact',message:'about to transact',data:{connectionId,fromId,toId,canvasId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H5'})}).catch(()=>{});
+      // #endregion
 
       db.transact([
         tx.connections[connectionId]
@@ -619,6 +635,9 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
           .link({ toElement: toId }),
       ]);
 
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:addConnection:returning',message:'addConnection returning connectionId',data:{connectionId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H5'})}).catch(()=>{});
+      // #endregion
       return connectionId;
     },
     [canvasId, canEdit],
@@ -915,6 +934,10 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   };
 
   const handleElementMouseDown = (e, elId, type) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:entry',message:'handleElementMouseDown called',data:{elId,type,activeTool,connectFrom,canEdit},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1-H3'})}).catch(()=>{});
+    // #endregion
+    ignoreNextClickRef.current = false;
     const { clientX, clientY } = getEventPoint(e);
     e.stopPropagation();
     if (!canEdit) {
@@ -945,16 +968,37 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     if (!el) return;
 
     if (activeTool === "connect") {
-      if (!canEdit) return;
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:connectBranch',message:'connect tool active, element clicked',data:{elId,connectFrom,canEdit,activeTool},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2-H3'})}).catch(()=>{});
+      // #endregion
+      e.stopPropagation(); // Ensure we stop propagation for any connect action
+      if (!canEdit) {
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:canEditFalse',message:'canEdit is false, returning early',data:{canEdit},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
+        return;
+      }
       if (!connectFrom) {
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:setConnectFrom',message:'setting connectFrom (first element)',data:{elId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
+        // #endregion
         setConnectFrom(elId);
         setSelectedId(elId);
       } else if (connectFrom !== elId) {
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:aboutToAddConnection',message:'about to call addConnection (second element)',data:{connectFrom,elId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2-H4'})}).catch(()=>{});
+        // #endregion
+        e.preventDefault();
         const cid = addConnection(connectFrom, elId);
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:afterAddConnection',message:'addConnection returned',data:{cid,connectFrom,elId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4-H5'})}).catch(()=>{});
+        // #endregion
         setConnectFrom(null);
         setEditingConnectionId(cid);
         setActiveTool(null);
-        setTimeout(() => connectionInputRef.current?.focus(), 100);
+        ignoreNextClickRef.current = true;
+        // Give React time to render the new connection and input
+        setTimeout(() => connectionInputRef.current?.focus(), 200);
       }
       return;
     }
@@ -1334,6 +1378,22 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         style: el.style,
       });
     },
+    onConnect: () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:toolbarActions:onConnect',message:'onConnect clicked from toolbar',data:{elementId:el.id,isLocked:el.isLocked},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
+      // #endregion
+      if (el.isLocked) return;
+      setActiveTool("connect");
+      setConnectFrom(el.id);
+      setSelectedId(el.id);
+    },
+    onAddLink: () => {
+      if (el.isLocked) return;
+      const url = window.prompt("Enter URL for this element:");
+      if (url !== null) {
+        updateElement(el.id, { link: url });
+      }
+    },
     onToggleLock: () => updateElement(el.id, { isLocked: !el.isLocked }),
     onDelete: () => {
       if (!el.isLocked) deleteElement(el.id);
@@ -1620,6 +1680,10 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
               onPointerDown={handleElementPointerDown}
               onClick={(e) => {
                 e.stopPropagation();
+                if (ignoreNextClickRef.current) {
+                  ignoreNextClickRef.current = false;
+                  return;
+                }
                 setSelectedId(el.id);
                 setContextMenu(null);
               }}
