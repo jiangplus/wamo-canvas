@@ -1,10 +1,15 @@
 /**
  * BoardsPage - Canvas board management page
- * Updated with custom fonts (FuturaPT-Light & SF-Pro-Display-Light) and background #FCFCFB
+ * Updated: Grid-based organic distribution, Super slow motion, Images uncropped.
+ * Text limited to 15 chars.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import { db, id, tx } from '../../lib/db';
 import { clearStoredAuthToken } from '../../lib/authStorage';
+
+// --- Configuration ---
+// Available fonts based on @font-face rules
+const AVAILABLE_FONTS = ['FuturaPT-Light', 'SF-Pro-Display-Light'];
 
 // --- Icons ---
 
@@ -50,23 +55,302 @@ function formatDate(timestamp) {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffHours < 1) return 'just now';
-
-  // 修复：1 hr vs 2 hrs
-  if (diffHours < 24) {
-    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  }
-
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
   if (diffDays === 1) return 'yesterday';
-
-  // 修复：1 day vs 2 days (虽然上面 catch 了 yesterday，但这更加健壮)
-  if (diffDays < 7) {
-    return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-  }
+  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
 
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// Hook for extremely slow, curved organic motion
+function useCurvedMotion(seed, speedModifier = 1, rangeModifier = 1) {
+    const elementRef = useRef(null);
+    const requestRef = useRef();
+    
+    // Generate stable random motion parameters based on seed
+    const params = useMemo(() => {
+        const seededRandom = (s) => {
+            const x = Math.sin(s * 9999) * 10000;
+            return x - Math.floor(x);
+        };
+        const r = (offset) => seededRandom(seed + offset);
+        
+        // Base speed reduced drastically (almost 0) for barely perceptible breathing
+        const baseSpeed = 0.00005 * speedModifier;
+        const baseRange = 25 * rangeModifier; 
+
+        return {
+            // Frequencies for X and Y axes
+            fx1: (0.5 + r(1)) * baseSpeed,
+            fy1: (0.5 + r(2)) * baseSpeed,
+            fx2: (0.8 + r(3)) * baseSpeed, 
+            fy2: (0.8 + r(4)) * baseSpeed,
+            // Phases
+            p1: r(5) * Math.PI * 2,
+            p2: r(6) * Math.PI * 2,
+            p3: r(7) * Math.PI * 2,
+            p4: r(8) * Math.PI * 2,
+            // Ranges
+            rx1: (0.7 + r(9) * 0.6) * baseRange,
+            ry1: (0.7 + r(10) * 0.6) * baseRange,
+            rx2: (0.3 + r(11) * 0.4) * baseRange,
+            ry2: (0.3 + r(12) * 0.4) * baseRange,
+        };
+    }, [seed, speedModifier, rangeModifier]);
+
+    const animate = (time) => {
+        const { fx1, fy1, fx2, fy2, p1, p2, p3, p4, rx1, ry1, rx2, ry2 } = params;
+        
+        const x = Math.sin(time * fx1 + p1) * rx1 + Math.cos(time * fx2 + p2) * rx2;
+        const y = Math.cos(time * fy1 + p3) * ry1 + Math.sin(time * fy2 + p4) * ry2;
+
+        if (elementRef.current) {
+            elementRef.current.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) translate(-50%, -50%)`;
+        }
+        requestRef.current = requestAnimationFrame(animate);
+    };
+
+    useEffect(() => {
+        requestRef.current = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(requestRef.current);
+    }, [params]);
+
+    return elementRef;
+}
+
+
 // --- Components ---
+
+function DreamyElement({ element, style, textSnippet, seed }) {
+  const { xStr, yStr, width, height, opacity, zIndex } = style;
+  
+  const isImage = element.type === 'image';
+  const isText = element.type === 'text';
+
+  const motionSpeed = isText ? 0.7 : 1.0;
+  const motionRange = isText ? 1.2 : 0.8;
+  
+  const motionRef = useCurvedMotion(seed, motionSpeed, motionRange);
+  const elementRef = isImage ? null : motionRef;
+
+  const wrapperStyle = {
+    position: 'absolute',
+    left: xStr,
+    top: yStr,
+    width: width,
+    height: height === 'auto' ? 'auto' : height,
+    zIndex: zIndex,
+    opacity: opacity,
+    transform: isImage ? 'translate(-50%, -50%)' : undefined,
+    willChange: isImage ? 'auto' : 'transform',
+    backgroundColor: 'transparent',
+  };
+  
+  // Image rendering - No crop (contain), No background
+  if (isImage) {
+    return (
+      <div style={wrapperStyle}>
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            background: `url(${element.content}) center/contain no-repeat`,
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (element.type === 'sticker') {
+    return (
+      <div ref={elementRef} style={{ ...wrapperStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div
+          style={{
+            fontSize: width * 0.6,
+            lineHeight: 1,
+          }}
+        >
+          {element.content}
+        </div>
+      </div>
+    );
+  }
+
+  if (isText) {
+    return (
+      <div ref={elementRef} style={wrapperStyle}>
+        <div
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: `${textSnippet.fontFamily}, sans-serif`,
+              color: '#111',
+              fontSize: `${textSnippet.fontSize}px`,
+              fontWeight: 400,
+              opacity: textSnippet.opacityVariation, 
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              textAlign: 'center',
+              width: '100%',
+              lineHeight: 1.3,
+            }}
+          >
+            {textSnippet.fullText}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// Updated: Grid-based placement logic
+function BoardCoverArt({ elements = [] }) {
+  const coverData = useMemo(() => {
+    if (!elements || elements.length === 0) {
+      return null;
+    }
+
+    const boardSeed = elements[0]?.id?.charCodeAt(0) || 42;
+    let rngState = boardSeed;
+    const seededRandom = () => {
+      const x = Math.sin(rngState++) * 10000;
+      return x - Math.floor(x);
+    };
+    const rand = (mod = 1) => seededRandom() * mod;
+
+    const shuffled = [...elements].sort(() => seededRandom() - 0.5);
+    
+    // Select 9 - 18 items
+    const count = 9 + Math.floor(rand(10));
+    const safeCount = Math.min(count, shuffled.length);
+    const selected = shuffled.slice(0, safeCount);
+    
+    // --- Grid Calculation (Stratified Sampling) ---
+    // 1. Calculate optimal grid size (approx square)
+    const cols = Math.ceil(Math.sqrt(safeCount));
+    const rows = Math.ceil(safeCount / cols);
+    
+    const cellWidth = 100 / cols;
+    const cellHeight = 100 / rows;
+
+    // 2. Generate all available slot indices
+    const slots = [];
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            slots.push({ r, c });
+        }
+    }
+
+    // 3. Shuffle slots to assign elements randomly to grid cells
+    const shuffledSlots = slots.sort(() => seededRandom() - 0.5);
+
+    const styledElements = [];
+
+    selected.forEach((el, index) => {
+      const elSeed = el.id?.charCodeAt(0) + index;
+      const isImage = el.type === 'image';
+      const isText = el.type === 'text';
+      
+      // Get a unique slot for this element
+      const slot = shuffledSlots[index] || { r: 0, c: 0 };
+
+      let widthUnit, heightUnit; 
+
+      if (isImage) {
+        // Large images preserved
+        widthUnit = 40 + rand(10); 
+        heightUnit = widthUnit * (0.7 + rand(0.6)); 
+      } else if (isText) {
+        widthUnit = 25 + rand(20); 
+        heightUnit = 12 + rand(8); 
+      } else {
+        widthUnit = 10 + rand(10);
+        heightUnit = widthUnit;
+      }
+
+      // --- Position Generation within the Grid Cell ---
+      const paddingX = cellWidth * 0.1; 
+      const paddingY = cellHeight * 0.1;
+      
+      const localX = paddingX + rand(cellWidth - paddingX * 2);
+      const localY = paddingY + rand(cellHeight - paddingY * 2);
+      
+      // Final global percentage
+      const finalX = (slot.c * cellWidth) + localX;
+      const finalY = (slot.r * cellHeight) + localY;
+
+      const xStr = `${finalX}%`;
+      const yStr = `${finalY}%`;
+      const cssWidth = `${widthUnit}%`;
+      const cssHeight = isText ? 'auto' : `${heightUnit}%`;
+      
+      const zIndex = isImage ? Math.floor(rand(5)) : 5 + Math.floor(rand(10));
+      
+      let textSnippet = null;
+      if (isText) {
+        const randomFontIndex = Math.floor(rand(AVAILABLE_FONTS.length));
+        const randomSize = 13 + Math.floor(rand(3));
+        const randomOpacity = 0.4 + rand(0.6);
+
+        // --- Text Limit Logic ---
+        let content = el.content || 'Untitled';
+        if (content.length >15) {
+            content = content.slice(0, 15) + '...';
+        }
+
+        textSnippet = { 
+            fullText: content,
+            fontFamily: AVAILABLE_FONTS[randomFontIndex],
+            fontSize: randomSize,
+            opacityVariation: randomOpacity
+        };
+      }
+      
+      styledElements.push({
+        element: el,
+        style: { xStr, yStr, width: cssWidth, height: cssHeight, opacity: 1.0, zIndex },
+        textSnippet,
+        seed: elSeed 
+      });
+    });
+    
+    return {
+      elements: styledElements,
+    };
+  }, [elements]);
+  
+  if (!coverData || coverData.elements.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center opacity-30">
+         <div className="w-8 h-8 rounded-full bg-gray-200" />
+      </div>
+    );
+  }
+  
+  const { elements: styledElements } = coverData;
+  
+  return (
+    <div className="relative w-full h-full overflow-hidden">
+      {styledElements.map(({ element, style, textSnippet, seed }) => (
+        <DreamyElement
+          key={element.id}
+          element={element}
+          style={style}
+          textSnippet={textSnippet}
+          seed={seed}
+        />
+      ))}
+    </div>
+  );
+}
 
 function CreateBoardModal({ isOpen, onClose, onSubmit }) {
   const [name, setName] = useState('');
@@ -99,7 +383,7 @@ function CreateBoardModal({ isOpen, onClose, onSubmit }) {
         <form onSubmit={handleSubmit}>
           <input
             type="text"
-            placeholder="e.g. 💃 Design Sprint"
+            placeholder="💃 let's jam"
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
@@ -132,7 +416,6 @@ function BoardCard({ board, onSelect, onDelete, isOwner }) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
   
-  // Close menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -164,20 +447,20 @@ function BoardCard({ board, onSelect, onDelete, isOwner }) {
 
   return (
     <div
-      className="group relative aspect-[4/3] bg-white rounded-[32px] p-6 cursor-pointer transition-all duration-500 hover:-translate-y-2"
+      className="group relative aspect-[4/3] bg-white rounded-[32px] cursor-pointer transition-all duration-500 hover:-translate-y-2 flex flex-col overflow-hidden"
       onClick={() => onSelect(board.id)}
       style={{ 
         boxShadow: '0 10px 40px -10px rgba(0,0,0,0.05)' 
       }}
     >
       {/* Menu Button */}
-      <div className="absolute top-5 right-5 z-20" ref={menuRef}>
+      <div className="absolute top-6 right-6 z-30" ref={menuRef}>
         <button
           onClick={handleMenuClick}
           className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${
             showMenu 
-              ? 'bg-gray-100 text-gray-900' 
-              : 'text-gray-300 hover:text-gray-600 hover:bg-gray-50'
+              ? 'bg-white/80 backdrop-blur-md text-gray-900 shadow-sm' 
+              : 'text-gray-500/70 hover:text-gray-700 hover:bg-white/50'
           }`}
         >
           <MoreHorizontalIcon />
@@ -185,7 +468,7 @@ function BoardCard({ board, onSelect, onDelete, isOwner }) {
 
         {/* Dropdown Menu */}
         {showMenu && (
-          <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden py-1 animate-fadeIn z-30">
+          <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden py-1 animate-fadeIn z-40">
             <button
               onClick={handleInvite}
               className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-gray-50 transition-colors text-gray-700"
@@ -205,17 +488,33 @@ function BoardCard({ board, onSelect, onDelete, isOwner }) {
         )}
       </div>
 
-      {/* Content Positioned Higher (bottom-10) */}
-      <div className="absolute bottom-8 left-8 right-8 pointer-events-none">
+      {/* Cover Art Area */}
+      <div className="flex-1 relative bg-[#F8F8F7]">
+        {/* The actual elements */}
+        <BoardCoverArt elements={board.elements || []} />
+        
+        {/* Vignette Mask Overlay */}
+        <div 
+            className="absolute inset-0 pointer-events-none z-20"
+            style={{
+                background: 'radial-gradient(ellipse at center, transparent 30%, rgba(255,255,255,0.8) 75%, rgba(255,255,255,1) 100%)',
+                mixBlendMode: 'lighten' 
+            }}
+        />
+      </div>
+
+      {/* Content at bottom */}
+      <div className="mt-auto pointer-events-none p-6 pt-4 z-30 relative">
+        <div className="absolute inset-0 -top-12 bg-gradient-to-t from-white via-white/90 to-transparent -z-10" />
         <h3 
-          className="text-[28px] text-gray-900 leading-tight mb-2 truncate"
+          className="text-[28px] text-gray-900 leading-tight mb-2 truncate relative"
           style={{ fontFamily: 'SF-Pro-Display-Light, sans-serif' }}
         >
            {board.name || 'Untitled'}
         </h3>
         
         <p 
-          className="text-sm text-gray-400"
+          className="text-sm text-gray-400 relative"
           style={{ fontFamily: 'FuturaPT-Light, sans-serif', letterSpacing: '0.02em' }}
         >
           edited by me {formatDate(board.createdAt)}
@@ -241,6 +540,7 @@ export default function BoardsPage({ onSelectBoard }) {
             },
             owner: {},
             memberships: { user: {} },
+            elements: {},
           },
         }
       : null,
@@ -287,7 +587,6 @@ export default function BoardsPage({ onSelectBoard }) {
   const avatarUrl = `https://api.dicebear.com/7.x/notionists/svg?seed=${displayName}`;
 
   return (
-    // Background updated to #FCFCFB
     <div className="min-h-screen w-full bg-[#FCFCFB] selection:bg-gray-200">
       
       {/* Top Navigation */}
