@@ -51,7 +51,7 @@ const DraggableCircle = ({ size, color, opacity = 1, zIndex = 0, style }) => (
 // Using vw for top positions to maintain relative vertical layout regardless of aspect ratio
 const stickers = [
   // Text String: top ~17.4vw
-  { id: 'text-string', src: '/assets/text on a string.svg', alt: 'Text String', className: 'w-[72%]', initial: { top: '12vw', left: '9vw', rotate: -3 }, zIndex: 5, drag: false }, 
+  { id: 'text-string', src: '/assets/text on a string.svg', alt: 'Text String', className: 'w-[72%]', initial: { top: '14vw', left: '10vw', rotate: -3 }, zIndex: 5, drag: false }, 
   
   // Flyer: top ~ -3vw
   { id: 'flyer', src: '/assets/flyer.png', alt: 'Flyer', className: 'w-[21.5%] brightness-95 sepia-[0.3] contrast-[0.9]', initial: { top: '-3vw', left: '70%', rotate: 100 }, zIndex: 10, drag: true },
@@ -63,13 +63,13 @@ const stickers = [
   { id: 'star-svg', src: '/assets/Star.svg', alt: 'Star', className: 'w-[8%]', initial: { top: '3vw', left: '58%', rotate: 15 }, zIndex: 16, drag: true },
   
   // Cat: top -1.2vw (preserved relative to string)
-  { id: 'cat', src: '/assets/cat_astronaut.png', alt: 'Cat', className: 'w-[28%]', initial: { top: '-1.2vw', left: '-1%', rotate: 120 }, zIndex: 20, drag: true },
+  { id: 'cat', src: '/assets/cat_astronaut.png', alt: 'Cat', className: 'w-[30%]', initial: { top: '-2.3vw', left: '3vw', rotate: 120 }, zIndex: 20, drag: true },
   
   // Phone: top 31.8vw (preserved relative to string)
   { id: 'phone', src: '/assets/phone.png', alt: 'Phone', className: 'w-[17%]', initial: { top: '27vw', left: '79vw', rotate: 3 }, zIndex: 31, drag: true },
   
   // Hand Right: top 1.8vw
-  { id: 'hand-right', src: '/assets/right_hand.png', alt: 'Right Hand', className: 'w-[34%]', initial: { top: '1.8vw', left: '68%', rotate: 9.8 }, zIndex: 30, drag: "y" },
+  { id: 'hand-right', src: '/assets/right_hand.png', alt: 'Right Hand', className: 'w-[34%]', initial: { top: '-1vw', left: '68%', rotate: 9.8 }, zIndex: 30, drag: "y" },
   
   // Hand Left: top 28.2vw
   { id: 'hand-left', src: '/assets/left_hand.png', alt: 'Left Hand', className: 'w-[35%]', initial: { top: '28.2vw', left: '-2%', rotate: 0 }, zIndex: 35, drag: "y" },
@@ -83,8 +83,8 @@ const Win95Popup = ({ onOkClick }) => (
     // Using em units for internal sizing, driven by fontSize (vw)
     className="absolute z-40 bg-[#c0c0c0] border-t-2 border-l-2 border-white border-b-2 border-r-2 border-black shadow-[1px_1px_0px_0px_#000]"
     style={{ 
-      top: '40vw', 
-      left: '40vw',
+      top: '38vw', 
+      left: '39vw',
       // Responsive font size base with minimum limit but no maximum limit for bigger screens
       fontSize: 'max(10px, 0.8vw)', 
       width: '26em',
@@ -121,7 +121,7 @@ const Win95Popup = ({ onOkClick }) => (
 
 const KeyCluster = ({ onClick }) => (
   // top: 50% -> 30vw
-  <div className="absolute z-50 flex items-center justify-center pointer-events-auto" style={{ top: '27vw', left: '62%', transform: 'translate(-50%, 0)' }}>
+  <div className="absolute z-50 flex items-center justify-center pointer-events-auto" style={{ top: '29vw', left: '62vw', transform: 'translate(-50%, 0)' }}>
     {["/assets/key right arrow.png", "/assets/create key.png", "/assets/together key.png"].map((src, index) => (
       <motion.img 
         key={index} 
@@ -155,7 +155,7 @@ const DraggableWord = ({ text, color, rotate, fontClass, fontSize, zIndex = 50 }
 const RansomNote = () => (
   // top: 37% -> 22.2vw
   // Added responsive padding to ensure line breaks happen as intended or scale down enough
-  <div className="absolute z-20 flex flex-col items-center justify-center w-full pointer-events-none" style={{ top: '20vw', left: '0vw' }}>
+  <div className="absolute z-20 flex flex-col items-center justify-center w-full pointer-events-none" style={{ top: '21vw', left: '0vw' }}>
     <div className="flex flex-col items-center justify-center gap-[0.4vw] w-full max-w-[90vw] select-none pointer-events-none">
       
       {/* Line 1 */}
@@ -183,10 +183,9 @@ export default function LandingPage({ onLoginClick }) {
     // Shuffle colors to ensure no duplicates for the first 6
     const shuffledColors = [...ALL_COLORS].sort(() => Math.random() - 0.5);
     
-    const smallCircles = Array.from({ length: 6 }).map((_, i) => ({
+    const smallCircles = Array.from({ length: 8 }).map((_, i) => ({
       id: `sc-${i}`,
-      // 5% smaller: 36 * 0.95 = 34.2, 55 * 0.95 = 52.25
-      size: Math.random() * (52.25 - 34.2) + 34.2,
+      size: Math.random() * (48 - 35) + 28,
       color: shuffledColors[i],
       pos: getSparsePos()
     }));
@@ -214,7 +213,7 @@ export default function LandingPage({ onLoginClick }) {
       {/* --- LAYER 0: Lowest Layer (Big Circles - Draggable now) --- */}
       <div className="absolute inset-0 z-0">
         {/* Cat Astronaut Circle */}
-        <DraggableCircle size="20vw" color="#F35476" opacity={0.1} style={{ position: 'absolute', top: '3%', left: '-3%', minWidth: '200px', minHeight: '200px' }} />
+        <DraggableCircle size="20vw" color="#F35476" opacity={0.1} style={{ position: 'absolute', top: '3vw', left: '-3vw', minWidth: '200px', minHeight: '200px' }} />
         {/* Window Circle */}
         <DraggableCircle size="35vw" color="#C7D3FF" opacity={0.9} style={{ position: 'absolute', top: '65%', left: '15%', minWidth: '220px', minHeight: '220px' }} />
         {/* Bottom Circle */}
