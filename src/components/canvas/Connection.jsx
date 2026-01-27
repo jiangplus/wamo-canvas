@@ -55,6 +55,9 @@ export const Connection = ({
 
   const fromCenter = getCenter(fromElement);
   const toCenter = getCenter(toElement);
+  // #region agent log
+  fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Connection.jsx:render',message:'Rendering connection',data:{id:connection.id,text:connection.text,style:{background:'NEO.frosted'}},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
   const x1 = fromCenter.x;
   const y1 = fromCenter.y;
   const x2 = toCenter.x;
@@ -118,6 +121,7 @@ export const Connection = ({
               maxLength={CONNECTION_CONFIG.maxLabelLength}
               className={`bg-transparent text-[11px] text-center italic outline-none font-medium ${isEditing ? 'caret-animate' : ''}`}
               style={{ 
+                background: 'transparent',
                 color: NEO.ink,
                 width: connection.text 
                   ? `${Math.min(connection.text.length * 7 + 20, CONNECTION_CONFIG.labelMaxWidth)}px` 
