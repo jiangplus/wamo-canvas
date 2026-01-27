@@ -1389,7 +1389,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     },
     onAddLink: () => {
       if (el.isLocked) return;
-      const url = window.prompt("Enter URL for this element:");
+      const url = window.prompt("Enter URL for this element:", el.link || "");
       if (url !== null) {
         updateElement(el.id, { link: url });
       }

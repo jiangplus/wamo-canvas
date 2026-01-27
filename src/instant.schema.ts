@@ -35,6 +35,7 @@ const _schema = i.schema({
       scale: i.number(),
       zIndex: i.number().indexed(),
       style: i.json().optional(), // Text styling
+      link: i.string().optional(), // URL to external link
       createdAt: i.number().indexed(),
     }),
     // Connections between elements

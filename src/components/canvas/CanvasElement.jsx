@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import { NEO } from '../../styles/theme';
-import { IconLock } from '../../icons';
+import { IconLock, IconLink } from '../../icons';
 import Avatar from '../ui/Avatar';
 import ElementToolbar from '../toolbar/ElementToolbar';
 import { ElementCommentList, CommentInput } from '../ui/Comment';
@@ -283,6 +283,34 @@ export const CanvasElement = ({
         {/* 锁定覆盖 */}
         {element.isLocked && isSelected && (
           <LockOverlay borderRadius={currentBorderRadius} />
+        )}
+
+        {/* 传送门 Button (仅当有 Link 时渲染) */}
+        {element.link && (
+          <a 
+            href={element.link} 
+            target="_blank"
+            rel="noopener noreferrer"
+            className="
+              absolute -top-5 -right-5 
+              w-10 h-10 rounded-full 
+              flex items-center justify-center
+              transform transition-all duration-300
+              opacity-40 group-hover:opacity-100 scale-90 group-hover:scale-100
+              z-[60] cursor-pointer
+            "
+            style={{
+              background: 'white',
+              border: `1px solid ${NEO.border}`,
+              boxShadow: NEO.shadow,
+              color: NEO.ink
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title={element.link}
+          >
+            <IconLink size={20} />
+          </a>
         )}
       </div>
 
