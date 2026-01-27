@@ -1,6 +1,6 @@
 /**
  * TextDrawer Component
- * 文字抽屉 - 创建和编辑文字卡片
+ * Text drawer - create and edit text cards
  */
 import React from 'react';
 import { NEO } from '../../styles/theme';
@@ -19,7 +19,7 @@ export const TextDrawer = ({
 }) => {
   const handleTextChange = (e) => {
     const text = e.target.value;
-    const words = text.trim().split(/\s+/).length;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
     if (words <= TEXT_CONFIG.maxWords || text.trim() === '') {
       onTextChange(text);
     }
@@ -28,7 +28,7 @@ export const TextDrawer = ({
   return (
     <Drawer isOpen={isOpen} title="text" onClose={onClose}>
       <div className="flex flex-col gap-6">
-        {/* 文字输入 */}
+        {/* Text input */}
         <div className="relative">
           <textarea 
             value={textInput} 
@@ -47,11 +47,11 @@ export const TextDrawer = ({
             className={`absolute bottom-3 right-4 text-[9px] font-semibold ${wordCount >= TEXT_CONFIG.warningThreshold ? 'text-rose-400' : ''}`} 
             style={{ color: wordCount >= TEXT_CONFIG.warningThreshold ? undefined : NEO.inkLight }}
           >
-            {wordCount}/{TEXT_CONFIG.maxWords}
+            {wordCount}/{TEXT_CONFIG.maxWords} words
           </div>
         </div>
         
-        {/* 预览区域 */}
+        {/* Preview area */}
         <div className="flex justify-between items-center">
           <span 
             className="text-[9px] font-semibold uppercase tracking-widest" 
@@ -75,18 +75,17 @@ export const TextDrawer = ({
           </button>
         </div>
         
-        {/* 可拖拽预览 */}
+        {/* Draggable preview - exact same style as on canvas */}
         <div 
           onMouseDown={(e) => {
             e.stopPropagation();
             onDragStart(e.clientX, e.clientY);
           }} 
-          className="flex justify-center p-4 cursor-grab hover:scale-105 transition-transform"
+          className="flex justify-center p-4 cursor-grab hover:scale-[1.02] transition-transform"
         >
           <div style={{
-            ...previewStyle, 
-            transform: 'none', 
-            fontSize: `${previewStyle.fontSize}px`
+            ...previewStyle,
+            // Keep the rotation and clip-path from previewStyle for consistency
           }}>
             {textInput || "Start typing..."}
           </div>

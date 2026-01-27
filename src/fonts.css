@@ -1,0 +1,223 @@
+@font-face {
+  font-family: 'Arbotek';
+  src: url('/assets/fonts/Arbotek-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'AvenirNextCyr';
+  src: url('/assets/fonts/AvenirNextCyr-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'AvenirNextCyr';
+  src: url('/assets/fonts/AvenirNextCyr-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'AvenirNextCyr';
+  src: url('/assets/fonts/AvenirNextCyr-Thin.ttf') format('truetype');
+  font-weight: 100;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'AvenirNextCyr';
+  src: url('/assets/fonts/AvenirNextCyr-ThinItalic.ttf') format('truetype');
+  font-weight: 100;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'Bygonest Rustic';
+  src: url('/assets/fonts/Bygonest Rustic Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Cormorant';
+  src: url('/assets/fonts/Cormorant-BoldItalic.ttf') format('truetype');
+  font-weight: bold;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'Cormorant';
+  src: url('/assets/fonts/Cormorant-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'DIN Next Slab Pro';
+  src: url('/assets/fonts/DIN Next Slab Pro Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Duckie';
+  src: url('/assets/fonts/Duckie-regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Lost Leonenst';
+  src: url('/assets/fonts/fonnts.com-Lost-Leonenst-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Lost Sagas';
+  src: url('/assets/fonts/fonnts.com-Lost-Sagas.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Ohno Blazeface';
+  src: url('/assets/fonts/fonnts.com-Ohno-Blazeface-Point-.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Perfectly Nostalgic';
+  src: url('/assets/fonts/fonnts.com-Perfectly_Nostalgic_Black_Italic_Black_Italic.ttf') format('truetype');
+  font-weight: 900;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'FormaDJRBanner';
+  src: url('/assets/fonts/FormaDJRBanner-Bold-Testing.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'FormaDJRBanner';
+  src: url('/assets/fonts/FormaDJRBanner-Light-Testing.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'FuturaPT';
+  src: url('/assets/fonts/FuturaPT-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'FuturaPTCond';
+  src: url('/assets/fonts/FuturaPTCond-Book.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Handjet';
+  src: url('/assets/fonts/Handjet-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Handjet';
+  src: url('/assets/fonts/Handjet-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Handjet';
+  src: url('/assets/fonts/Handjet-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'krifon';
+  src: url('/assets/fonts/krifon-regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Obviously';
+  src: url('/assets/fonts/Obviously-Super.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'ObviouslyNarrow';
+  src: url('/assets/fonts/ObviouslyNarrow-Thin.otf') format('opentype');
+  font-weight: 100;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'OhnoCasual';
+  src: url('/assets/fonts/OhnoCasual-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'PortherasTest';
+  src: url('/assets/fonts/PortherasTest-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'PortherasTest';
+  src: url('/assets/fonts/PortherasTest-MediumItalic.otf') format('opentype');
+  font-weight: 500;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'SabonNextLTPro';
+  src: url('/assets/fonts/SabonNextLTPro-DemiItalic.otf') format('opentype');
+  font-weight: 600;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('/assets/fonts/SF-Pro-Display-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'TT Alientz Trial Grotesque';
+  src: url('/assets/fonts/TT Alientz Trial Grotesque.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'TT Alientz Trial Serif';
+  src: url('/assets/fonts/TT Alientz Trial Serif.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'TT Alientz Trial Var';
+  src: url('/assets/fonts/TT Alientz Trial Var.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}

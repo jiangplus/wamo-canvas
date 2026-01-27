@@ -489,7 +489,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   });
   const [textInput, setTextInput] = useState("New Idea...");
   const [previewTextStyle, setPreviewTextStyle] = useState(
-    generateMagazineStyle(),
+    generateMagazineStyle("New Idea..."),
   );
   const [picturePool, setPicturePool] = useState(INITIAL_PICTURE_POOL);
   const [drawerImageAngles, setDrawerImageAngles] = useState({});
@@ -538,6 +538,23 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     () => (textInput.trim() ? textInput.trim().split(/\s+/).length : 0),
     [textInput],
   );
+
+  // Auto-regenerate style when text length changes significantly
+  // This ensures the aspect ratio stays good as text changes
+  const prevTextLengthRef = useRef(textInput.length);
+  useEffect(() => {
+    const currentLength = textInput.length;
+    const prevLength = prevTextLengthRef.current;
+    
+    // Regenerate if length changed by more than 30% or crossed a threshold
+    const lengthChange = Math.abs(currentLength - prevLength);
+    const significantChange = lengthChange > Math.max(prevLength * 0.3, 15);
+    
+    if (significantChange) {
+      setPreviewTextStyle(generateMagazineStyle(textInput));
+      prevTextLengthRef.current = currentLength;
+    }
+  }, [textInput]);
 
   // ===== HELPERS =====
   const getWorldCoords = useCallback(
@@ -1342,7 +1359,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   const toolbarActions = (el) => ({
     onUndo: () => {}, // Undo not supported with real-time sync
     onShuffle: () =>
-      !el.isLocked && updateElement(el.id, { style: generateMagazineStyle() }),
+      !el.isLocked && updateElement(el.id, { style: generateMagazineStyle(el.content || '') }),
     onEdit: () => {
       if (el.isLocked) return;
       setEditingTextId(el.id);
@@ -1594,7 +1611,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         onTextChange={setTextInput}
         wordCount={wordCount}
         previewStyle={previewTextStyle}
-        onShuffle={() => setPreviewTextStyle(generateMagazineStyle())}
+        onShuffle={() => setPreviewTextStyle(generateMagazineStyle(textInput))}
         onDragStart={(x, y) =>
           setDraggedFromDrawer({ type: "text", data: textInput, x, y })
         }
@@ -1757,7 +1774,9 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
           style={{
             left: draggedFromDrawer.x,
             top: draggedFromDrawer.y,
-            transform: "translate(-50%, -50%) scale(0.85)",
+            transform: draggedFromDrawer.type === "text" 
+              ? "translate(-50%, -50%)" 
+              : "translate(-50%, -50%) scale(0.85)",
             opacity: 0.95,
           }}
         >
@@ -1790,8 +1809,8 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
             <div
               style={{
                 ...previewTextStyle,
-                transform: "none",
-                fontSize: `${previewTextStyle.fontSize * 0.8}px`,
+                // Keep the same style, just add a slight scale down for drag preview
+                transform: `${previewTextStyle.transform || ''} scale(0.85)`.trim(),
               }}
             >
               {textInput || "..."}

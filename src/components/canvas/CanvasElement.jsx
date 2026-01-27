@@ -1,6 +1,6 @@
 /**
  * CanvasElement Component
- * 画布元素组件 - 渲染各类型元素（图片、文字、贴纸）
+ * Canvas element component - renders various element types (image, text, sticker)
  */
 import React from 'react';
 import { NEO } from '../../styles/theme';
@@ -9,7 +9,7 @@ import Avatar from '../ui/Avatar';
 import ElementToolbar from '../toolbar/ElementToolbar';
 import { ElementCommentList, CommentInput } from '../ui/Comment';
 
-// 噪点纹理覆盖
+// Grain texture overlay
 const GrainOverlay = ({ borderRadius }) => (
   <div
     className="absolute inset-0 pointer-events-none z-[5]"
@@ -22,7 +22,7 @@ const GrainOverlay = ({ borderRadius }) => (
   />
 );
 
-// 选框组件
+// Selection frame component
 const SelectionFrame = ({ onMouseDown, onPointerDown }) => {
   const triggerMouse = (e, type) => {
     e.stopPropagation();
@@ -100,7 +100,7 @@ const SelectionFrame = ({ onMouseDown, onPointerDown }) => {
   );
 };
 
-// 锁定覆盖层
+// Lock overlay
 const LockOverlay = ({ borderRadius }) => (
   <div className="absolute inset-0 flex items-center justify-center bg-black/5 z-50 pointer-events-none" style={{ borderRadius }}>
     <div className="p-2 bg-white/90" style={{ boxShadow: NEO.shadow, borderRadius: '50%' }}>
@@ -109,7 +109,7 @@ const LockOverlay = ({ borderRadius }) => (
   </div>
 );
 
-// 图片元素
+// Image element
 const ImageElement = ({ element }) => (
   <div
     className="w-full h-full"
@@ -148,7 +148,7 @@ const ImageElement = ({ element }) => (
   </div>
 );
 
-// 贴纸元素
+// Sticker element
 const StickerElement = ({ element }) => (
   <div
     className="flex items-center justify-center h-full"
@@ -161,34 +161,56 @@ const StickerElement = ({ element }) => (
   </div>
 );
 
-// 文字元素
-const TextElement = ({ element, scale, isEditing, editRef, onSubmitEdit, onStartEdit }) => {
+// Text element - renders as a fixed-shape card (like a picture)
+const TextElement = ({ element, isEditing, editRef, onSubmitEdit, onStartEdit }) => {
+  // Ensure text is left-aligned by default
+  const textAlign = element.style?.textAlign || 'left';
+  // Get the fixed width from style to maintain shape consistency
+  const fixedWidth = element.style?.width || 'auto';
+  
   if (isEditing) {
     return (
-      <textarea
+      <div
         ref={editRef}
-        defaultValue={element.content}
-        onBlur={(e) => onSubmitEdit(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmitEdit(e.target.value); } }}
-        className="w-full h-full outline-none resize-none"
-        style={{ ...element.style, width: '100%', height: '100%', fontSize: `${(element.style?.fontSize || 22) * scale}px`, transform: 'none', boxShadow: NEO.shadow, border: `2px solid ${NEO.ink}` }}
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={(e) => onSubmitEdit(e.target.innerText)}
+        onKeyDown={(e) => { 
+          if (e.key === 'Enter' && !e.shiftKey) { 
+            e.preventDefault(); 
+            onSubmitEdit(e.target.innerText); 
+          } 
+        }}
+        className="outline-none"
+        style={{ 
+          ...element.style, 
+          transform: 'none',
+          boxShadow: NEO.shadow, 
+          // Use outline so it doesn't affect the card's dimensions
+          outline: `2px solid ${NEO.ink}`,
+          textAlign,
+          width: fixedWidth,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          cursor: 'text',
+          display: 'block',
+        }}
         onMouseDown={(e) => e.stopPropagation()}
-      />
+      >
+        {element.content}
+      </div>
     );
   }
   return (
     <div
-      className="overflow-hidden"
       style={{
         ...element.style,
-        width: '100%',
-        height: 'fit-content',
-        fontSize: `${(element.style?.fontSize || 22) * scale}px`,
-        transform: element.style?.transform || 'none',
-        boxShadow: NEO.shadow,
+        transform: 'none', // Rotation is handled by the container
+        boxShadow: NEO.shadowSoft,
         border: 'none',
         whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word'
+        wordBreak: 'break-word',
+        textAlign,
       }}
       onDoubleClick={onStartEdit}
     >
@@ -232,30 +254,52 @@ export const CanvasElement = ({
   editCommentInputRef
 }) => {
   const scale = element.scale || 1;
-  // Make width respect element.width for Text as well, scaling it to maintain aspect ratio/layout
+  
+  // For text elements, use 'auto' to let the style control the size
+  // For images and stickers, use element.width
   const scaledWidth = element.type === 'text'
-    ? (element.width || 220) * scale
+    ? 'auto'
     : (element.width || 220);
 
   const scaledHeight = element.type === 'text' ? 'auto' : (element.type === 'image' ? 'auto' : (element.width || 220) * 0.65);
 
   const currentBorderRadius = element.type === 'image'
     ? (element.shape?.borderRadius || '4px')
-    : (element.type === 'text' ? '2px' : '0px');
+    : '0px'; // Perfect rectangle for text
+
+  // For text elements, combine the style rotation with the element rotation and scale
+  // This ensures the selection box scales with the content
+  const textStyleRotation = element.type === 'text' && element.style?.transform 
+    ? element.style.transform 
+    : '';
+  const baseRotation = element.rotation || 0;
+  
+  // Build transform: for text, include scale and style rotation; for others, just element rotation
+  const containerTransform = element.type === 'text'
+    ? `${textStyleRotation} rotate(${baseRotation}deg) scale(${scale})`
+    : `rotate(${baseRotation}deg)`;
 
   return (
-    <div className="absolute" style={{ left: element.x, top: element.y, zIndex: isSelected ? 100 : (element.zIndex || 20) }}>
-      {/* 选中时显示工具栏 */}
+    <div 
+      className="absolute" 
+      style={{ 
+        left: element.x, 
+        top: element.y, 
+        zIndex: isSelected ? 100 : (element.zIndex || 20),
+      }}
+    >
+      {/* Show toolbar when selected */}
       {isSelected && canEdit && <ElementToolbar element={element} {...toolbarProps} />}
 
-      {/* 元素主体 */}
+      {/* Element body */}
       <div
         id={`content-${element.id}`}
         className="relative group"
         style={{
           width: scaledWidth,
           height: scaledHeight,
-          transform: `rotate(${element.rotation}deg)`,
+          transform: containerTransform,
+          transformOrigin: 'center center',
           overflow: 'visible',
           cursor: canEdit ? (element.isLocked ? 'not-allowed' : 'grab') : 'default'
         }}
@@ -264,7 +308,7 @@ export const CanvasElement = ({
         onClick={onClick}
         onContextMenu={(e) => onContextMenu(e, element.id)}
       >
-        {/* 选框与手柄 */}
+        {/* Selection frame and handles */}
         {isSelected && !element.isLocked && canEdit && (
           <SelectionFrame
             onMouseDown={(e, type) => onMouseDown(e, element.id, type)}
@@ -279,7 +323,7 @@ export const CanvasElement = ({
         })()}
         {/* #endregion */}
 
-        {/* 噪点纹理 - Only for images to give them texture, not for stickers/text which need transparency */}
+        {/* Grain texture - Only for images to give them texture, not for stickers/text which need transparency */}
         {element.type === 'image' && (
           <>
             {(() => {
@@ -292,17 +336,17 @@ export const CanvasElement = ({
           </>
         )}
 
-        {/* 元素内容 */}
+        {/* Element content */}
         {element.type === 'image' && <ImageElement element={element} />}
         {element.type === 'sticker' && <StickerElement element={element} />}
-        {element.type === 'text' && <TextElement element={element} scale={scale} isEditing={isEditing} editRef={editRef} onSubmitEdit={onSubmitEdit} onStartEdit={onStartEdit} />}
+        {element.type === 'text' && <TextElement element={element} isEditing={isEditing} editRef={editRef} onSubmitEdit={onSubmitEdit} onStartEdit={onStartEdit} />}
 
-        {/* 锁定覆盖 */}
+        {/* Lock overlay */}
         {element.isLocked && isSelected && (
           <LockOverlay borderRadius={currentBorderRadius} />
         )}
 
-        {/* 传送门 Button (仅当有 Link 时渲染) */}
+        {/* Portal button (only render when element has a link) */}
         {element.link && (
           <a 
             href={element.link} 
@@ -359,9 +403,9 @@ export const CanvasElement = ({
         </div>
       )}
 
-      {/* 评论区域 - 显示在元素下方，宽度与元素一致 */}
+      {/* Comments area - displayed below element with matching width */}
       <div style={{ width: element.type === 'text' ? '100%' : scaledWidth, marginTop: '8px' }}>
-        {/* 评论输入框 */}
+        {/* Comment input */}
         {isAddingComment && (
           <CommentInput
             value={commentText}
@@ -373,7 +417,7 @@ export const CanvasElement = ({
           />
         )}
 
-        {/* 评论列表 */}
+        {/* Comment list */}
         <ElementCommentList
           comments={comments}
           currentUserId={currentUserId}

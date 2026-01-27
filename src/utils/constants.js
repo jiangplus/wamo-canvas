@@ -29,7 +29,7 @@ export const HISTORY_CONFIG = {
   maxLength: 30,
 };
 
-// 文字配置
+// Text configuration (word limit)
 export const TEXT_CONFIG = {
   maxWords: 140,
   warningThreshold: 130,
