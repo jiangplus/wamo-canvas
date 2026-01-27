@@ -29,11 +29,6 @@
     background-color: #FAF9F6;
   }
   
-  button {
-    background-color: white;
-    color: #3A3A36;
-  }
-  
   svg {
     color: inherit;
   }
@@ -63,26 +58,17 @@ h1 {
 }
 
 button {
-  border: 1px solid transparent;
+  border: none;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.25s;
-  /* Reset - let components control their own styling */
-  background-color: transparent;
-  border-radius: 0;
   padding: 0;
-}
-
-button:hover {
-  border-color: #E6E2D3;
 }
 
 button:focus,
 button:focus-visible {
-  outline: 2px solid #A7C7E7;
-  outline-offset: 2px;
+  outline: none;
 }
 
 /* Ensure all SVG icons don't get affected by dark mode */

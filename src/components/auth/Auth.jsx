@@ -76,7 +76,7 @@ export default function Auth({ isModal = false, onClose }) {
 
   // --- UI COMPONENTS ---
 
-  // Reusable Submit Circle (Check Mark)
+  // Reusable Submit Circle (Arrow Icon)
   const SubmitButton = ({ loading, onClick, disabled, className }) => (
     <button
       type="button"
@@ -87,16 +87,17 @@ export default function Auth({ isModal = false, onClose }) {
         bg-gray-900 text-white rounded-full 
         transition-all duration-300
         hover:scale-105 active:scale-95 hover:bg-black
-        disabled:opacity-0 disabled:pointer-events-none disabled:scale-75
+        disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100
         z-20 shadow-lg
+        focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2
         ${className}
       `}
     >
       {loading ? (
         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
       ) : (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="20 6 9 17 4 12"></polyline>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12h14M12 5l7 7-7 7" />
         </svg>
       )}
     </button>
@@ -105,9 +106,9 @@ export default function Auth({ isModal = false, onClose }) {
   const CloseButton = () => (
     <button
       onClick={onClose}
-      className="absolute top-5 right-5 w-8 h-8 bg-white/40 hover:bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-500 hover:text-gray-900 transition-all z-50 shadow-sm border border-white/50"
+      className="absolute top-5 right-5 w-8 h-8 bg-white/40 hover:bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-500 hover:text-gray-900 transition-all z-50 shadow-sm border border-white/50 focus:outline-none focus:ring-2 focus:ring-gray-400"
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <line x1="18" y1="6" x2="6" y2="18"></line>
         <line x1="6" y1="6" x2="18" y2="18"></line>
       </svg>
@@ -117,7 +118,7 @@ export default function Auth({ isModal = false, onClose }) {
   const content = (
     <div
       onClick={e => e.stopPropagation()}
-      className="relative flex flex-col items-center px-10 pt-12 text-center overflow-hidden"
+      className="relative flex flex-col items-start px-10 pt-[114px] text-left overflow-hidden"
       style={{
         // STABLE ISLAND DIMENSIONS
         width: '440px',
@@ -131,8 +132,8 @@ export default function Auth({ isModal = false, onClose }) {
         border: '1px solid rgba(255, 255, 255, 0.5)',
       }}
     >
-      {/* 1. FIXED CLOSE BUTTON */}
-      {isModal && onClose && <CloseButton />}
+      {/* Close Button - Visible at all times if onClose is provided */}
+      {onClose && <CloseButton />}
 
       {/* 2. FIXED HEADER SECTION (Title & Subtitle) */}
       <div className="w-full mb-8 shrink-0">
@@ -162,7 +163,7 @@ export default function Auth({ isModal = false, onClose }) {
         )}
       </div>
 
-      {/* 4. FORM AREA (Absolute positioning for smooth fades or Fixed Grid) */}
+      {/* 4. FORM AREA */}
       <div className="w-full relative flex-1">
         
         {/* EMAIL FORM */}
@@ -177,7 +178,7 @@ export default function Auth({ isModal = false, onClose }) {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 // VISIBLE INACTIVE STATE: bg-white/50 + border
-                className="w-full pl-6 pr-16 py-4 text-lg rounded-full outline-none transition-all placeholder:text-gray-400 text-gray-900"
+                className="w-full pl-6 pr-16 py-4 text-lg rounded-full outline-none transition-all placeholder:text-gray-400 text-gray-900 focus:ring-2 focus:ring-gray-400 focus:ring-offset-0"
                 style={{ 
                   fontFamily: 'SF-Pro-Display-Light, sans-serif',
                   background: 'rgba(255, 255, 255, 0.5)', // Visible but translucent
@@ -251,28 +252,30 @@ export default function Auth({ isModal = false, onClose }) {
                  className="w-12 h-12 shrink-0" // Fixed size independent of input height
               />
             </div>
-
-            {/* SPACIOUS LINKS (Left & Right) */}
-            <div className="w-full flex items-center justify-between px-1">
-              <button
-                type="button"
-                onClick={handleBack}
-                className="px-4 py-2 text-sm text-gray-500 hover:text-gray-800 hover:bg-white/40 rounded-full transition-all"
-              >
-                ← Wrong email
-              </button>
-              
-              <button
-                type="button"
-                onClick={handleSendCode}
-                className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-full transition-all"
-              >
-                Resend
-              </button>
-            </div>
           </form>
         )}
       </div>
+
+      {/* SPACIOUS LINKS (Bottom Fixed) */}
+      {state === AuthStates.CODE && (
+        <div className="absolute bottom-6 left-0 w-full flex items-center justify-between px-10">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-800 hover:bg-white/40 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-gray-400"
+          >
+            ← Wrong email
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleSendCode}
+            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 hover:bg-white/40 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-gray-400"
+          >
+            Resend
+          </button>
+        </div>
+      )}
     </div>
   );
 

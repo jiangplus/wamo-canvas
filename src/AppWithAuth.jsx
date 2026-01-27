@@ -178,18 +178,7 @@ export default function AppWithAuth() {
       <div className="relative">
         <LandingPage onLoginClick={handleLoginClick} />
         {showAuthModal && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-white/20 backdrop-blur-sm" onClick={handleCloseAuthModal}>
-            <div className="relative" onClick={e => e.stopPropagation()}>
-              <Auth isModal={true} />
-              <button
-                onClick={handleCloseAuthModal}
-                className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900"
-                style={{ fontFamily: 'SF-Pro-Display-Light, sans-serif' }}
-              >
-                ✕
-              </button>
-            </div>
-          </div>
+          <Auth isModal={true} onClose={handleCloseAuthModal} />
         )}
       </div>
     );

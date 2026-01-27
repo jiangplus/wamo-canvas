@@ -457,7 +457,7 @@ function BoardCard({ board, onSelect, onDelete, isOwner }) {
       <div className="absolute top-6 right-6 z-30" ref={menuRef}>
         <button
           onClick={handleMenuClick}
-          className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${
+          className={`w-10 h-10 flex items-center justify-center rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-gray-300 ${
             showMenu 
               ? 'bg-white/80 backdrop-blur-md text-gray-900 shadow-sm' 
               : 'text-gray-500/70 hover:text-gray-700 hover:bg-white/50'
@@ -468,21 +468,21 @@ function BoardCard({ board, onSelect, onDelete, isOwner }) {
 
         {/* Dropdown Menu */}
         {showMenu && (
-          <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden py-1 animate-fadeIn z-40">
+          <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden p-2 flex flex-col gap-1 animate-fadeIn z-40">
             <button
               onClick={handleInvite}
-              className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-gray-50 transition-colors text-gray-700"
+              className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 hover:bg-gray-50 transition-colors text-gray-700 rounded-lg focus:outline-none focus:bg-gray-50"
             >
               <UserPlusIcon />
-              <span>Invite</span>
+              <span className="font-medium">Invite</span>
             </button>
-            <div className="h-px bg-gray-50 my-1" />
+            <div className="h-px bg-gray-50 mx-2" />
             <button
               onClick={handleHide}
-              className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+              className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors rounded-lg focus:outline-none focus:bg-red-50"
             >
               <EyeOffIcon />
-              <span>Hide</span>
+              <span className="font-medium">Hide</span>
             </button>
           </div>
         )}
