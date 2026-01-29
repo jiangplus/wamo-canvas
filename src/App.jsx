@@ -133,6 +133,10 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     }
   }, [userId, userEmail, userImageURL, user?.username]);
 
+  const [isEvolutionMode, setIsEvolutionMode] = useState(false);
+  const [isEvolutionPlaying, setIsEvolutionPlaying] = useState(false);
+  const [evolutionProgress, setEvolutionProgress] = useState(0);
+
   // Operation history for undo/redo
   const { recordOperation, undo, redo, canUndo, canRedo, clearHistory } =
     useOperationHistory(canvasId, userId);
@@ -145,6 +149,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   // Keyboard shortcuts for undo/redo
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (isEvolutionMode) return;
       // Ctrl+Z or Cmd+Z for undo
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
@@ -159,7 +164,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canUndo, canRedo, undo, redo]);
+  }, [canUndo, canRedo, undo, redo, isEvolutionMode]);
 
   // Query canvas data
   const { data: canvasData, isLoading: canvasLoading, error: queryError } =
@@ -170,6 +175,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
             $: { where: { id: canvasId } },
             owner: {},
             memberships: { user: {} },
+            history: { $: { order: { timestamp: "asc" } } },
             elements: { creator: {}, comments: { author: {} } },
             connections: {
               fromElement: {},
@@ -203,8 +209,9 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   // This also makes legacy/orphaned private canvases (missing owner link but with membership) editable.
   const canEdit =
     Boolean(userId) &&
-    (isOwner || isMember);
-  const canEditName = Boolean(userId) && isOwner;
+    (isOwner || isMember) &&
+    !isEvolutionMode;
+  const canEditName = Boolean(userId) && isOwner && !isEvolutionMode;
   const hasValidOwner = Boolean(userId && user?.email);
   const currentUserName = user?.email?.split("@")[0] || "User";
   const currentUserAvatar = getAvatarUrl(currentUserName || "user");
@@ -264,9 +271,44 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     return Math.max(...elements.map((el) => el.zIndex || 0));
   }, [elements]);
 
+  const historyRecords = useMemo(() => {
+    if (!canvas?.history) return [];
+    return [...canvas.history].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  }, [canvas]);
+
+  const evolutionMax = historyRecords.length;
+
+  const evolutionElements = useMemo(() => {
+    if (!isEvolutionMode || evolutionMax === 0) return [];
+    const elementMap = new Map();
+    const applyRecord = (record) => {
+      if (!record?.elementId) return;
+      const existing = elementMap.get(record.elementId) || { id: record.elementId };
+      const patch = record.newState || record.previousState || {};
+      if (record.operation === OPERATION_TYPES.DELETE) {
+        elementMap.delete(record.elementId);
+        return;
+      }
+      if (record.operation === OPERATION_TYPES.CREATE) {
+        elementMap.set(record.elementId, { id: record.elementId, ...patch });
+        return;
+      }
+      elementMap.set(record.elementId, { ...existing, ...patch, id: record.elementId });
+    };
+    for (let i = 0; i < evolutionProgress; i += 1) {
+      applyRecord(historyRecords[i]);
+    }
+    return Array.from(elementMap.values());
+  }, [isEvolutionMode, evolutionProgress, evolutionMax, historyRecords]);
+
+  const displayElements = isEvolutionMode ? evolutionElements : elements;
+  const displayConnections = isEvolutionMode ? [] : connections;
+  const canUndoEffective = canUndo && !isEvolutionMode;
+  const canRedoEffective = canRedo && !isEvolutionMode;
+
   const sortedElements = useMemo(
-    () => [...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)),
-    [elements],
+    () => [...displayElements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)),
+    [displayElements],
   );
 
   // ===== REFS =====
@@ -318,6 +360,40 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     points: [],
   });
   const [textInput, setTextInput] = useState("New Idea...");
+
+  useEffect(() => {
+    if (!isEvolutionMode) {
+      setIsEvolutionPlaying(false);
+      return;
+    }
+    setSelectedId(null);
+    setActiveTool(null);
+    setContextMenu(null);
+    setEditingTextId(null);
+    setNewCommentTargetId(null);
+    setEditingCommentId(null);
+    setEvolutionProgress(evolutionMax);
+  }, [isEvolutionMode, evolutionMax]);
+
+  useEffect(() => {
+    setEvolutionProgress((prev) => Math.min(prev, evolutionMax));
+  }, [evolutionMax]);
+
+  useEffect(() => {
+    if (!isEvolutionMode || !isEvolutionPlaying) return;
+    if (evolutionMax === 0) return;
+    const stepMs = 80;
+    const timer = setInterval(() => {
+      setEvolutionProgress((prev) => {
+        if (prev >= evolutionMax) {
+          setIsEvolutionPlaying(false);
+          return evolutionMax;
+        }
+        return prev + 1;
+      });
+    }, stepMs);
+    return () => clearInterval(timer);
+  }, [isEvolutionMode, isEvolutionPlaying, evolutionMax]);
   const [previewTextStyle, setPreviewTextStyle] = useState(
     generateMagazineStyle("New Idea..."),
   );
@@ -1162,6 +1238,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
   // ===== CONNECTION PREVIEW =====
   const connectionPreview = useMemo(() => {
+    if (isEvolutionMode) return null;
     if (!connectFrom || activeTool !== "connect") return null;
     const from = elements.find((el) => el.id === connectFrom);
     if (!from) return null;
@@ -1169,6 +1246,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     const wp = getWorldCoords(mousePosition.x, mousePosition.y);
     return { x1: fromCenter.x, y1: fromCenter.y, x2: wp.x, y2: wp.y };
   }, [
+    isEvolutionMode,
     connectFrom,
     activeTool,
     elements,
@@ -1179,10 +1257,10 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
   // ===== TOOLBAR ACTIONS =====
   const toolbarActions = (el) => ({
-    onUndo: () => undo(),
-    onRedo: () => redo(),
-    canUndo,
-    canRedo,
+    onUndo: () => canUndoEffective && undo(),
+    onRedo: () => canRedoEffective && redo(),
+    canUndo: canUndoEffective,
+    canRedo: canRedoEffective,
     onShuffle: () =>
       !el.isLocked && updateElement(el.id, { style: generateMagazineStyle(el.content || '') }),
     onEdit: () => {
@@ -1464,12 +1542,12 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
             style={{ width: 1, height: 1 }}
           >
             {connectionPreview && <ConnectionPreview {...connectionPreview} />}
-            {connections.map((c) => (
+            {displayConnections.map((c) => (
             <Connection
               key={c.id}
               connection={c}
-              fromElement={elements.find((e) => e.id === c.from)}
-              toElement={elements.find((e) => e.id === c.to)}
+              fromElement={displayElements.find((e) => e.id === c.from)}
+              toElement={displayElements.find((e) => e.id === c.to)}
               isEditing={editingConnectionId === c.id}
               inputRef={connectionInputRef}
               onEdit={(connId) => {
@@ -1662,6 +1740,75 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         </div>
       )}
 
+      <div className="fixed bottom-6 left-6 z-[150] pointer-events-auto">
+        <button
+          onClick={() => setIsEvolutionMode((p) => !p)}
+          className="px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all"
+          style={{
+            background: isEvolutionMode ? NEO.ink : NEO.surface,
+            color: isEvolutionMode ? NEO.bg : NEO.ink,
+            borderRadius: NEO.radiusLg,
+            border: `1px solid ${NEO.border}`,
+            boxShadow: NEO.shadow,
+          }}
+        >
+          Time
+        </button>
+      </div>
+
+      {isEvolutionMode && (
+        <div
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[150] px-4 py-3 flex items-center gap-3"
+          style={{
+            background: NEO.surface,
+            backdropFilter: "blur(20px)",
+            border: `1px solid ${NEO.border}`,
+            borderRadius: NEO.radiusLg,
+            boxShadow: NEO.shadowHover,
+            minWidth: "420px",
+          }}
+        >
+          <button
+            onClick={() => {
+              if (evolutionMax === 0) return;
+              setIsEvolutionPlaying((p) => {
+                if (!p && evolutionProgress >= evolutionMax) {
+                  setEvolutionProgress(0);
+                }
+                return !p;
+              });
+            }}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all"
+            style={{
+              background: evolutionMax === 0 ? NEO.bg : NEO.ink,
+              color: evolutionMax === 0 ? NEO.inkLight : NEO.bg,
+              cursor: evolutionMax === 0 ? "not-allowed" : "pointer",
+            }}
+            title={isEvolutionPlaying ? "Pause" : "Play"}
+          >
+            {isEvolutionPlaying ? "II" : "▶"}
+          </button>
+          <div className="flex-1">
+            <input
+              type="range"
+              min={0}
+              max={evolutionMax}
+              value={Math.min(evolutionProgress, evolutionMax)}
+              onChange={(e) => {
+                setIsEvolutionPlaying(false);
+                setEvolutionProgress(Number(e.target.value));
+              }}
+              className="w-full"
+            />
+            <div className="flex items-center justify-between text-[10px] mt-1 uppercase tracking-widest" style={{ color: NEO.inkLight }}>
+              <span>Start</span>
+              <span>{evolutionMax === 0 ? "No history" : `${evolutionProgress}/${evolutionMax}`}</span>
+              <span>Now</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <BottomControls
         scale={viewport.scale}
         onZoomIn={() =>
@@ -1672,12 +1819,12 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         }
         onSnapToCenter={() => {
           const r = viewportRef.current?.getBoundingClientRect();
-          if (r && elements.length) {
+          if (r && displayElements.length) {
             const cx =
-              elements.reduce((s, e) => s + e.x + (e.width || 220) / 2, 0) /
-              elements.length;
+              displayElements.reduce((s, e) => s + e.x + (e.width || 220) / 2, 0) /
+              displayElements.length;
             const cy =
-              elements.reduce((s, e) => s + e.y + 150, 0) / elements.length;
+              displayElements.reduce((s, e) => s + e.y + 150, 0) / displayElements.length;
             setIsAnimating(true);
             setViewport({
               x: r.width / 2 - cx,
@@ -1689,7 +1836,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         }}
       />
       <Minimap
-        elements={elements}
+        elements={displayElements}
         selectedId={selectedId}
         viewport={viewport}
         viewportRef={viewportRef}
