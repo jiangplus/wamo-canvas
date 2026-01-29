@@ -101,6 +101,13 @@ export const IconUndo = () => (
   </Icon>
 );
 
+export const IconRedo = () => (
+  <Icon size={18}>
+    <path d="M15 14l5-5-5-5"/>
+    <path d="M4 20v-7a4 4 0 014-4h12"/>
+  </Icon>
+);
+
 export const IconRotateCcw = () => (
   <Icon size={18}>
     <path d="M1 4v6h6"/>

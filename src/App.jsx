@@ -42,6 +42,10 @@ import { ContextMenu } from "./components/ui/ContextMenu";
 // Icons
 import { IconLock } from "./icons";
 
+// Hooks & History
+import { useOperationHistory } from "./hooks/useOperationHistory";
+import { OPERATION_TYPES, extractElementState } from "./utils/historyOperations";
+
 
 // ============================================================================
 // CONSTANTS
@@ -128,6 +132,34 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       db.transact([tx.$users[userId].update(updates)]);
     }
   }, [userId, userEmail, userImageURL, user?.username]);
+
+  // Operation history for undo/redo
+  const { recordOperation, undo, redo, canUndo, canRedo, clearHistory } =
+    useOperationHistory(canvasId, userId);
+
+  // Clear history when switching canvases
+  useEffect(() => {
+    clearHistory();
+  }, [canvasId, clearHistory]);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+Z or Cmd+Z for undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) undo();
+      }
+      // Ctrl+Shift+Z or Cmd+Shift+Z for redo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        if (canRedo) redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canUndo, canRedo, undo, redo]);
 
   // Query canvas data
   const { data: canvasData, isLoading: canvasLoading, error: queryError } =
@@ -218,9 +250,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
   const connections = useMemo(() => {
     if (!canvas?.connections) return [];
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:connections:memo',message:'connections memo computing',data:{rawConnections:canvas.connections.map(c=>({id:c.id,fromElement:c.fromElement,toElement:c.toElement}))},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H6'})}).catch(()=>{});
-    // #endregion
     // FIX: fromElement/toElement are "has one" relationships, so they're objects not arrays
     return canvas.connections.map((c) => ({
       id: c.id,
@@ -380,33 +409,46 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     if (!elementId || !canEdit) return;
     // Filter out non-schema fields
     const { comments, creator, ...schemaUpdates } = updates;
+
+    // Record operation for undo/redo
+    const element = elements.find((el) => el.id === elementId);
+    if (element && userId) {
+      const previousState = extractElementState(element, OPERATION_TYPES.UPDATE);
+      const newState = { ...previousState, ...updates };
+      recordOperation(OPERATION_TYPES.UPDATE, elementId, previousState, newState);
+    }
+
     db.transact([tx.elements[elementId].update(schemaUpdates)]);
-  }, [canEdit]);
+  }, [canEdit, elements, userId, recordOperation]);
 
   const addElement = useCallback(
     (data) => {
       if (!canvasId || !userId || !canEdit || !hasValidOwner) return;
       const elementId = id();
       const zIndex = maxZIndex + 1;
+      const elementData = {
+        type: data.type,
+        content: data.content,
+        x: data.x,
+        y: data.y,
+        width: data.width || DEFAULT_ELEMENT_WIDTH,
+        height: data.height || null,
+        rotation: data.rotation || 0,
+        isLocked: false,
+        texture: "none",
+        shape: data.shape || null,
+        scale: data.scale || 1,
+        zIndex,
+        style: data.style || null,
+        createdAt: Date.now(),
+      };
+
+      // Record CREATE operation for undo/redo
+      recordOperation(OPERATION_TYPES.CREATE, elementId, null, elementData);
 
       db.transact([
         tx.elements[elementId]
-          .update({
-            type: data.type,
-            content: data.content,
-            x: data.x,
-            y: data.y,
-            width: data.width || DEFAULT_ELEMENT_WIDTH,
-            height: data.height || null,
-            rotation: data.rotation || 0,
-            isLocked: false,
-            texture: "none",
-            shape: data.shape || null,
-            scale: data.scale || 1,
-            zIndex,
-            style: data.style || null,
-            createdAt: Date.now(),
-          })
+          .update(elementData)
           .link({ canvas: canvasId })
           .link({ creator: userId }),
       ]);
@@ -414,33 +456,32 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       setSelectedId(elementId);
       return elementId;
     },
-    [canvasId, userId, maxZIndex, canEdit, hasValidOwner],
+    [canvasId, userId, maxZIndex, canEdit, hasValidOwner, recordOperation],
   );
 
   const deleteElement = useCallback(
     (elementId) => {
       if (!elementId || !canEdit) return;
+
+      // Record DELETE operation for undo/redo
+      const element = elements.find((el) => el.id === elementId);
+      if (element && userId) {
+        const previousState = extractElementState(element, OPERATION_TYPES.DELETE);
+        recordOperation(OPERATION_TYPES.DELETE, elementId, previousState, null);
+      }
+
       db.transact([tx.elements[elementId].delete()]);
       if (selectedId === elementId) setSelectedId(null);
     },
-    [selectedId, canEdit],
+    [selectedId, canEdit, elements, userId, recordOperation],
   );
 
   const addConnection = useCallback(
     (fromId, toId) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:addConnection:entry',message:'addConnection called',data:{fromId,toId,canvasId,canEdit},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
-      // #endregion
       if (!canvasId || !fromId || !toId || !canEdit) {
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:addConnection:earlyReturn',message:'addConnection early return',data:{canvasIdMissing:!canvasId,fromIdMissing:!fromId,toIdMissing:!toId,canEditFalse:!canEdit},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
-        // #endregion
         return;
       }
       const connectionId = id();
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:addConnection:transact',message:'about to transact',data:{connectionId,fromId,toId,canvasId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H5'})}).catch(()=>{});
-      // #endregion
 
       db.transact([
         tx.connections[connectionId]
@@ -453,9 +494,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
           .link({ toElement: toId }),
       ]);
 
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:addConnection:returning',message:'addConnection returning connectionId',data:{connectionId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H5'})}).catch(()=>{});
-      // #endregion
       return connectionId;
     },
     [canvasId, canEdit],
@@ -745,9 +783,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   };
 
   const handleElementMouseDown = (e, elId, type) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:entry',message:'handleElementMouseDown called',data:{elId,type,activeTool,connectFrom,canEdit},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1-H3'})}).catch(()=>{});
-    // #endregion
     ignoreNextClickRef.current = false;
     const { clientX, clientY } = getEventPoint(e);
     e.stopPropagation();
@@ -779,31 +814,16 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     if (!el) return;
 
     if (activeTool === "connect") {
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:connectBranch',message:'connect tool active, element clicked',data:{elId,connectFrom,canEdit,activeTool},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2-H3'})}).catch(()=>{});
-      // #endregion
       e.stopPropagation(); // Ensure we stop propagation for any connect action
       if (!canEdit) {
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:canEditFalse',message:'canEdit is false, returning early',data:{canEdit},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
         return;
       }
       if (!connectFrom) {
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:setConnectFrom',message:'setting connectFrom (first element)',data:{elId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
-        // #endregion
         setConnectFrom(elId);
         setSelectedId(elId);
       } else if (connectFrom !== elId) {
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:aboutToAddConnection',message:'about to call addConnection (second element)',data:{connectFrom,elId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2-H4'})}).catch(()=>{});
-        // #endregion
         e.preventDefault();
         const cid = addConnection(connectFrom, elId);
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleElementMouseDown:afterAddConnection',message:'addConnection returned',data:{cid,connectFrom,elId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4-H5'})}).catch(()=>{});
-        // #endregion
         setConnectFrom(null);
         setEditingConnectionId(cid);
         setActiveTool(null);
@@ -1151,7 +1171,10 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
   // ===== TOOLBAR ACTIONS =====
   const toolbarActions = (el) => ({
-    onUndo: () => {}, // Undo not supported with real-time sync
+    onUndo: () => undo(),
+    onRedo: () => redo(),
+    canUndo,
+    canRedo,
     onShuffle: () =>
       !el.isLocked && updateElement(el.id, { style: generateMagazineStyle(el.content || '') }),
     onEdit: () => {
@@ -1190,9 +1213,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       });
     },
     onConnect: () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:toolbarActions:onConnect',message:'onConnect clicked from toolbar',data:{elementId:el.id,isLocked:el.isLocked},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
       if (el.isLocked) return;
       setActiveTool("connect");
       setConnectFrom(el.id);

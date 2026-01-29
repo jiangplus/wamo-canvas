@@ -9,6 +9,7 @@ import Avatar from '../ui/Avatar';
 import { getAvatarUrl } from '../../utils/constants';
 import {
   IconUndo,
+  IconRedo,
   IconShuffle,
   IconEdit,
   IconScissors,
@@ -17,7 +18,7 @@ import {
   IconLock,
   IconUnlock,
   IconTrash,
-  IconRotateCcw, // Added
+  IconRotateCcw,
   IconConnect,
   IconLink,
 } from '../../icons';
@@ -25,10 +26,13 @@ import {
 export const ElementToolbar = ({
   element,
   onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
   onShuffle,
   onEdit,
   onLasso,
-  onReset, // Re-enabled
+  onReset,
   onMoveUpLayer,
   onDuplicate,
   onConnect,
@@ -49,20 +53,32 @@ export const ElementToolbar = ({
     >
       <Avatar src={creatorAvatar} size={40} />
       
-      <div 
-        className="flex items-center gap-0.5 px-1.5 py-1" 
-        style={{ 
-          background: NEO.surface, 
-          backdropFilter: 'blur(20px)', 
-          border: `1px solid ${NEO.border}`, 
-          boxShadow: NEO.shadow, 
-          borderRadius: NEO.radiusLg 
+      <div
+        className="flex items-center gap-0.5 px-1.5 py-1"
+        style={{
+          background: NEO.surface,
+          backdropFilter: 'blur(20px)',
+          border: `1px solid ${NEO.border}`,
+          boxShadow: NEO.shadow,
+          borderRadius: NEO.radiusLg
         }}
       >
-        <IconButton onClick={onUndo} title="Undo">
+        <IconButton
+          onClick={onUndo}
+          title="Undo (Ctrl+Z)"
+          disabled={!canUndo}
+        >
           <IconUndo />
         </IconButton>
-        
+
+        <IconButton
+          onClick={onRedo}
+          title="Redo (Ctrl+Shift+Z)"
+          disabled={!canRedo}
+        >
+          <IconRedo />
+        </IconButton>
+
         {element.type === 'text' && (
           <>
             <IconButton 

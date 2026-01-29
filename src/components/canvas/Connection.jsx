@@ -36,13 +36,7 @@ export const Connection = ({
   onChange,
   readOnly = false
 }) => {
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Connection.jsx:render',message:'Connection component render',data:{connectionId:connection?.id,from:connection?.from,to:connection?.to,hasFromElement:!!fromElement,hasToElement:!!toElement},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H7'})}).catch(()=>{});
-  // #endregion
   if (!fromElement || !toElement) {
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Connection.jsx:earlyReturn',message:'Connection returning null - missing element',data:{connectionId:connection?.id,from:connection?.from,to:connection?.to,fromElementMissing:!fromElement,toElementMissing:!toElement},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H7'})}).catch(()=>{});
-    // #endregion
     return null;
   }
 
@@ -55,9 +49,6 @@ export const Connection = ({
 
   const fromCenter = getCenter(fromElement);
   const toCenter = getCenter(toElement);
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Connection.jsx:render',message:'Rendering connection',data:{id:connection.id,text:connection.text,style:{background:'NEO.frosted'}},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
   const x1 = fromCenter.x;
   const y1 = fromCenter.y;
   const x2 = toCenter.x;

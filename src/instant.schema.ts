@@ -53,6 +53,18 @@ const _schema = i.schema({
     canvas_memberships: i.entity({
       createdAt: i.number().indexed(),
     }),
+    // Operation history for undo/redo
+    // Operation types: 'create' | 'delete' | 'update' | 'move'
+    // Updatable: YES - similar consecutive operations are consolidated within a 500ms window
+    // (e.g., multiple MOVE operations get merged into one entry)
+    history: i.entity({
+      operation: i.string().indexed(), // 'create' | 'delete' | 'update' | 'move'
+      elementId: i.string().indexed(), // The element this operation affects
+      previousState: i.json().optional(), // State before operation (for undo)
+      newState: i.json().optional(), // State after operation (for redo)
+      timestamp: i.number().indexed(), // When operation was performed (updated on consolidation)
+      createdAt: i.number().indexed(),
+    }),
   },
   links: {
     $usersLinkedPrimaryUser: {
@@ -125,6 +137,15 @@ const _schema = i.schema({
         onDelete: "cascade",
       },
       reverse: { on: "$users", has: "many", label: "canvasMemberships" },
+    },
+    // History links
+    historyCanvas: {
+      forward: { on: "history", has: "one", label: "canvas", onDelete: "cascade" },
+      reverse: { on: "canvases", has: "many", label: "history" },
+    },
+    historyUser: {
+      forward: { on: "history", has: "one", label: "user" },
+      reverse: { on: "$users", has: "many", label: "operations" },
     },
   },
   rooms: {

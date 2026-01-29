@@ -316,22 +316,10 @@ export const CanvasElement = ({
           />
         )}
 
-        {/* #region agent log */}
-        {(() => {
-             fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CanvasElement.jsx:render',message:'Rendering element',data:{id:element.id,type:element.type,hasGrainOverlay:true},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
-             return null;
-        })()}
-        {/* #endregion */}
 
         {/* Grain texture - Only for images to give them texture, not for stickers/text which need transparency */}
         {element.type === 'image' && (
           <>
-            {(() => {
-               // #region agent log
-               fetch('http://127.0.0.1:7245/ingest/107c799c-6417-454c-9202-86b4f3fb5d3f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CanvasElement.jsx:GrainOverlay',message:'Rendering GrainOverlay for image',data:{id:element.id,type:element.type},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
-               // #endregion
-               return null;
-            })()}
             <GrainOverlay borderRadius={currentBorderRadius} />
           </>
         )}

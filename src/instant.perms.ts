@@ -109,6 +109,25 @@ const rules = {
       canDelete: "isSelf || isCanvasOwner",
     },
   },
+  // Operation history - for undo/redo
+  // History entries can be updated to consolidate similar operations
+  history: {
+    allow: {
+      view: "true", // Anyone can view history
+      create: "canCreate",
+      update: "canUpdate", // Allow updates to consolidate similar operations
+      delete: "false",
+    },
+    bind: {
+      isAuthenticated: "auth.id != null",
+      isCanvasOwner: "auth.id != null && auth.id in data.ref('canvas.owner.id')",
+      isCanvasMember: "auth.id != null && auth.id in data.ref('canvas.memberships.user.id')",
+      isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
+      isCreator: "auth.id != null && auth.id in data.ref('user.id')",
+      canCreate: "isAuthenticated && (isCanvasOwner || isCanvasMember || isCanvasPublic)",
+      canUpdate: "isCreator", // Only the user who created the operation can update it
+    },
+  },
 } satisfies InstantRules;
 
 export default rules;
