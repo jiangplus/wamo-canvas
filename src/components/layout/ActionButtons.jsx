@@ -156,6 +156,18 @@ function SharePopup({ isOpen, onClose, canvasId, visibility, isOwner, onVisibili
             </p>
             <div className="flex gap-2">
               <button
+                onClick={() => handleVisibilityToggle('public')}
+                className="flex-1 py-2.5 px-3 text-sm font-medium transition-all rounded-lg hover:scale-[1.02]"
+                style={{
+                  background: (visibility === 'public' || !visibility) ? '#10B981' : NEO.bg,
+                  color: (visibility === 'public' || !visibility) ? 'white' : NEO.ink,
+                  border: `1px solid ${(visibility === 'public' || !visibility) ? '#10B981' : NEO.border}`,
+                  cursor: 'pointer',
+                }}
+              >
+                Public
+              </button>
+              <button
                 onClick={() => handleVisibilityToggle('readonly')}
                 className="flex-1 py-2.5 px-3 text-sm font-medium transition-all rounded-lg hover:scale-[1.02]"
                 style={{
@@ -167,21 +179,9 @@ function SharePopup({ isOpen, onClose, canvasId, visibility, isOwner, onVisibili
               >
                 Readonly
               </button>
-              <button
-                onClick={() => handleVisibilityToggle('public')}
-                className="flex-1 py-2.5 px-3 text-sm font-medium transition-all rounded-lg hover:scale-[1.02]"
-                style={{
-                  background: visibility === 'public' ? '#10B981' : NEO.bg,
-                  color: visibility === 'public' ? 'white' : NEO.ink,
-                  border: `1px solid ${visibility === 'public' ? '#10B981' : NEO.border}`,
-                  cursor: 'pointer',
-                }}
-              >
-                Public
-              </button>
             </div>
             <p className="text-xs mt-2" style={{ color: NEO.inkLight }}>
-              {visibility === 'readonly'
+              {(visibility === 'readonly')
                 ? 'Shared users can view, only you can edit'
                 : 'Shared users can view and edit'}
             </p>

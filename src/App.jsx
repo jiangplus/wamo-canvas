@@ -134,7 +134,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   // ===== DERIVED DATA FROM INSTANTDB =====
   const canvas = canvasData?.canvases?.[0];
   const canvasOwnerId = canvas?.owner?.[0]?.id;
-  const isOwner = userId && canvasOwnerId && userId === canvasOwnerId;
+  const isOwner = Boolean(userId && canvasOwnerId && userId === canvasOwnerId);
   const isMember = Boolean(
     userId &&
       canvas?.memberships?.some((membership) => {
