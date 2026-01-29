@@ -148,8 +148,8 @@ function SharePopup({ isOpen, onClose, canvasId, visibility, isOwner, onVisibili
           )}
         </button>
 
-        {/* Visibility Toggle - Owner Only */}
-        {isOwner && (
+        {/* Visibility Toggle - Owner only */}
+        {isOwner ? (
           <div className="mt-6 pt-4 border-t" style={{ borderColor: NEO.border }}>
             <p className="text-xs font-medium mb-3 uppercase tracking-wide" style={{ color: NEO.inkLight }}>
               Share Access
@@ -182,8 +182,14 @@ function SharePopup({ isOpen, onClose, canvasId, visibility, isOwner, onVisibili
             </div>
             <p className="text-xs mt-2" style={{ color: NEO.inkLight }}>
               {(visibility === 'readonly')
-                ? 'Shared users can view, only you can edit'
+                ? 'Shared users can view, only owner can edit'
                 : 'Shared users can view and edit'}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 pt-4 border-t" style={{ borderColor: NEO.border }}>
+            <p className="text-xs" style={{ color: NEO.inkLight }}>
+              Only the owner can change sharing access.
             </p>
           </div>
         )}

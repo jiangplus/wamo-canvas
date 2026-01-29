@@ -9,9 +9,14 @@ const rules = {
   $users: {
     allow: {
       view: "true",
+      update: "isSelf",
+    },
+    bind: {
+      isSelf: "auth.id != null && auth.id == data.id",
     },
     fields: {
       email: "true",
+      username: "true",
       imageURL: "true",
       displayName: "true",
     },

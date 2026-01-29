@@ -10,6 +10,7 @@ const _schema = i.schema({
     }),
     $users: i.entity({
       email: i.string().unique().indexed().optional(),
+      username: i.string().optional(),
       imageURL: i.string().optional(),
       type: i.string().optional(),
     }),

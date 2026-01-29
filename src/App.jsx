@@ -109,8 +109,25 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   // Get current user
   const { user, isLoading: authLoading } = db.useAuth();
   const userId = user?.id;
+  const userEmail = user?.email;
+  const userImageURL = user?.imageURL;
   const effectiveAuthLoading =
     authLoadingProp === undefined ? authLoading : authLoadingProp;
+
+  useEffect(() => {
+    if (!userId) return;
+    const updates = {};
+    // Set default username from email if not already set
+    if (userEmail && !user?.username) {
+      updates.username = userEmail.split('@')[0];
+    }
+    if (userImageURL) {
+      updates.imageURL = userImageURL;
+    }
+    if (Object.keys(updates).length > 0) {
+      db.transact([tx.$users[userId].update(updates)]);
+    }
+  }, [userId, userEmail, userImageURL, user?.username]);
 
   // Query canvas data
   const { data: canvasData, isLoading: canvasLoading, error: queryError } =

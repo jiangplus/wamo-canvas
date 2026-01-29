@@ -123,6 +123,11 @@ function useCurvedMotion(seed, speedModifier = 1, rangeModifier = 1) {
 
 function DreamyElement({ element, style, textSnippet, seed }) {
   const { xStr, yStr, width, height, opacity, zIndex } = style;
+  const numericWidth = Number.isFinite(width)
+    ? width
+    : Number.isFinite(Number(width))
+      ? Number(width)
+      : 160;
   
   const isImage = element.type === 'image';
   const isText = element.type === 'text';
@@ -166,7 +171,7 @@ function DreamyElement({ element, style, textSnippet, seed }) {
       <div ref={elementRef} style={{ ...wrapperStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div
           style={{
-            fontSize: width * 0.6,
+            fontSize: numericWidth * 0.6,
             lineHeight: 1,
           }}
         >
@@ -415,6 +420,15 @@ function CreateBoardModal({ isOpen, onClose, onSubmit }) {
 function BoardCard({ board, onSelect, onDelete, isOwner }) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
+  const owner = board.owner?.[0];
+  const ownerName = isOwner
+    ? 'You'
+    : owner?.username || 'Unknown';
+  const ownerAvatar =
+    owner?.imageURL ||
+    `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(
+      owner?.username || ownerName || owner?.id || 'owner',
+    )}`;
   
   useEffect(() => {
     function handleClickOutside(event) {
@@ -513,21 +527,45 @@ function BoardCard({ board, onSelect, onDelete, isOwner }) {
            {board.name || 'Untitled'}
         </h3>
         
-        <p 
-          className="text-sm text-gray-400 relative"
+        <div
+          className="flex items-center gap-2 text-sm text-gray-400 relative"
           style={{ fontFamily: 'FuturaPT-Light, sans-serif', letterSpacing: '0.02em' }}
         >
-          edited by me {formatDate(board.createdAt)}
-        </p>
+          <span className="inline-flex h-5 w-5 rounded-full overflow-hidden border border-white/70 shadow-sm">
+            <img src={ownerAvatar} alt={ownerName} className="w-full h-full object-cover" />
+          </span>
+          <span className="truncate" title={ownerName}>
+            Owner {ownerName}
+          </span>
+          <span className="text-gray-300">•</span>
+          <span>Created {formatDate(board.createdAt)}</span>
+        </div>
       </div>
     </div>
   );
 }
 
 export default function BoardsPage({ onSelectBoard }) {
-  const user = db.useUser();
+  const { user } = db.useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const userId = user?.id;
+  const userEmail = user?.email;
+  const userImageURL = user?.imageURL;
+
+  useEffect(() => {
+    if (!userId) return;
+    const updates = {};
+    // Set default username from email if not already set
+    if (userEmail && !user?.username) {
+      updates.username = userEmail.split('@')[0];
+    }
+    if (userImageURL) {
+      updates.imageURL = userImageURL;
+    }
+    if (Object.keys(updates).length > 0) {
+      db.transact([tx.$users[userId].update(updates)]);
+    }
+  }, [userId, userEmail, userImageURL, user?.username]);
 
   const { data, isLoading } = db.useQuery(
     userId
@@ -538,8 +576,8 @@ export default function BoardsPage({ onSelectBoard }) {
                 or: [{ 'owner.id': userId }, { 'memberships.user.id': userId }],
               },
             },
-            owner: {},
-            memberships: { user: {} },
+            owner: { $: { fields: ['username', 'email', 'imageURL'] } },
+            memberships: { user: { $: { fields: ['username', 'email', 'imageURL'] } } },
             elements: {},
           },
         }
@@ -639,7 +677,7 @@ export default function BoardsPage({ onSelectBoard }) {
                   <BoardCard
                     key={board.id}
                     board={board}
-                    isOwner={isOwner || true}
+                    isOwner={isOwner}
                     onSelect={onSelectBoard}
                     onDelete={handleDeleteBoard}
                   />
