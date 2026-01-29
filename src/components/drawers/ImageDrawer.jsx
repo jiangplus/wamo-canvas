@@ -69,21 +69,21 @@ export const ImageDrawer = ({
   onFileUpload,
 }) => {
   const headerContent = (
-    <div 
-      className="flex mx-6 mt-4 p-1" 
+    <div
+      className="flex mx-6 mt-4 p-1"
       style={{ background: NEO.accent, borderRadius: NEO.radiusSm }}
     >
-      <TabButton 
-        active={activeTab === 'public'} 
+      <TabButton
+        active={activeTab === 'public'}
         onClick={() => onTabChange('public')}
       >
         Public
       </TabButton>
-      <TabButton 
-        active={activeTab === 'private'} 
-        onClick={() => onTabChange('private')}
+      <TabButton
+        active={activeTab === 'readonly'}
+        onClick={() => onTabChange('readonly')}
       >
-        Private
+        Readonly
       </TabButton>
     </div>
   );

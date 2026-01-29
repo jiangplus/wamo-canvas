@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { NEO } from '../../styles/theme';
 import { IconShare } from '../../icons';
+import { db, tx } from '../../lib/db';
 
 const CopyIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -26,7 +27,7 @@ const CloseIcon = () => (
   </svg>
 );
 
-function SharePopup({ isOpen, onClose }) {
+function SharePopup({ isOpen, onClose, canvasId, visibility, isOwner, onVisibilityChange }) {
   const [copied, setCopied] = useState(false);
   const shareUrl = window.location.href;
 
@@ -37,6 +38,13 @@ function SharePopup({ isOpen, onClose }) {
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleVisibilityToggle = (newVisibility) => {
+    if (canvasId && isOwner) {
+      db.transact([tx.canvases[canvasId].update({ visibility: newVisibility })]);
+      onVisibilityChange?.(newVisibility);
     }
   };
 
@@ -140,19 +148,51 @@ function SharePopup({ isOpen, onClose }) {
           )}
         </button>
 
-        {/* Tip */}
-        <p
-          className="text-xs text-center mt-4"
-          style={{ color: NEO.inkLight }}
-        >
-          Scan QR code or share the link
-        </p>
+        {/* Visibility Toggle - Owner Only */}
+        {isOwner && (
+          <div className="mt-6 pt-4 border-t" style={{ borderColor: NEO.border }}>
+            <p className="text-xs font-medium mb-3 uppercase tracking-wide" style={{ color: NEO.inkLight }}>
+              Share Access
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleVisibilityToggle('readonly')}
+                className="flex-1 py-2.5 px-3 text-sm font-medium transition-all rounded-lg hover:scale-[1.02]"
+                style={{
+                  background: visibility === 'readonly' ? '#F59E0B' : NEO.bg,
+                  color: visibility === 'readonly' ? 'white' : NEO.ink,
+                  border: `1px solid ${visibility === 'readonly' ? '#F59E0B' : NEO.border}`,
+                  cursor: 'pointer',
+                }}
+              >
+                Readonly
+              </button>
+              <button
+                onClick={() => handleVisibilityToggle('public')}
+                className="flex-1 py-2.5 px-3 text-sm font-medium transition-all rounded-lg hover:scale-[1.02]"
+                style={{
+                  background: visibility === 'public' ? '#10B981' : NEO.bg,
+                  color: visibility === 'public' ? 'white' : NEO.ink,
+                  border: `1px solid ${visibility === 'public' ? '#10B981' : NEO.border}`,
+                  cursor: 'pointer',
+                }}
+              >
+                Public
+              </button>
+            </div>
+            <p className="text-xs mt-2" style={{ color: NEO.inkLight }}>
+              {visibility === 'readonly'
+                ? 'Shared users can view, only you can edit'
+                : 'Shared users can view and edit'}
+            </p>
+          </div>
+        )}
       </div>
     </>
   );
 }
 
-export const ActionButtons = () => {
+export const ActionButtons = ({ canvasId, visibility, isOwner, onVisibilityChange }) => {
   const [showShare, setShowShare] = useState(false);
 
   return (
@@ -190,7 +230,14 @@ export const ActionButtons = () => {
         </button>
       </div>
 
-      <SharePopup isOpen={showShare} onClose={() => setShowShare(false)} />
+      <SharePopup
+        isOpen={showShare}
+        onClose={() => setShowShare(false)}
+        canvasId={canvasId}
+        visibility={visibility}
+        isOwner={isOwner}
+        onVisibilityChange={onVisibilityChange}
+      />
     </>
   );
 };

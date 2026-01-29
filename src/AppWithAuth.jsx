@@ -117,7 +117,7 @@ export default function AppWithAuth() {
   };
 
   // If there's a canvas ID in URL, show the canvas immediately (don't wait for auth)
-  // Public/protected canvases can be viewed without login
+  // Public/readonly canvases can be viewed without login
   // The App component will handle access control based on canvas visibility
   if (selectedCanvasId) {
     return (

@@ -8,7 +8,7 @@
 - Real-time collaborative editing via InstantDB
 - Infinite panning and zooming canvas
 - Passwordless authentication with magic codes
-- Flexible permission model (private/protected/public canvases)
+- Flexible permission model (readonly/public canvases)
 - Beautiful NEO design system
 - Lightweight and performant
 
@@ -39,12 +39,11 @@
 - ✅ **Live Presence**: Avatar badges showing active editors
 - ✅ **Comments**: Comment on elements with author tracking
 - ✅ **Canvas Memberships**: Invite users to collaborate
-- ✅ **Join to Edit**: Self-serve access for public/protected canvases
+- ✅ **Join to Edit**: Self-serve access for public/readonly canvases (all canvases allow viewing)
 
 ### Access Control
-- ✅ **Private Canvases**: Owner-only access
-- ✅ **Protected Canvases**: Public view, owner edit
-- ✅ **Public Canvases**: All users can edit (if logged in)
+- ✅ **Readonly Canvases**: Public view, owner edit
+- ✅ **Public Canvases**: All users can view and edit (default)
 - ✅ **Element Lock Restrictions**: Creator can bypass locks
 - ✅ **Membership-Based Control**: Fine-grained collaboration
 
@@ -210,15 +209,14 @@ UI Rerender (React Diff)
 ```
 Resource        View Access                    Edit Access
 ────────────────────────────────────────────────────────────
-Private         Owner only                     Owner only
-Protected       Owner + Members + Public       Owner only
+Readonly        Everyone                       Owner only
 Public          Everyone                       Logged-in users
 ```
 
 ### Granular Controls
 
 **Canvas Level:**
-- `canView`: Public OR Protected OR Owner OR Member
+- `canView`: Everyone (all canvases are viewable)
 - `canEdit`: Owner OR Member (depends on canvas visibility)
 - `canChangeVisibility`: Owner only
 
@@ -235,7 +233,7 @@ Public          Everyone                       Logged-in users
 
 **Canvas Memberships:**
 - `canView`: Self or canvas owner
-- `canCreate`: Authenticated AND (canvas public or protected)
+- `canCreate`: Authenticated AND (canvas is public)
 - `canDelete`: Self or canvas owner
 
 ### Permission Checks in Code
@@ -244,8 +242,8 @@ Public          Everyone                       Logged-in users
 // Canvas access
 const isOwner = userId === canvasOwnerId;
 const isMember = memberships?.some(m => m.user.id === userId);
-const canView = isPublic || isProtected || isOwner || isMember;
-const canEdit = canView && (isOwner || isMember || isPublic);
+const canView = true; // All canvases are viewable
+const canEdit = isOwner || (isPublic && isMember);
 
 // Element locks
 const canEditElement = canEdit && (!isLocked || isCreator);
@@ -258,7 +256,7 @@ const canChangeVisibility = isOwner;
 
 ```typescript
 // Canvas
-canView: "isPublic || isProtected || isOwner"
+canView: "true" // All canvases are viewable
 canCreate: "isAuthenticated"
 canUpdate: "isOwner"
 
@@ -286,7 +284,7 @@ Primary resource representing a collaborative canvas.
 {
   id: string (auto-generated)
   name: string (canvas title)
-  visibility: 'private' | 'protected' | 'public'
+  visibility: 'readonly' | 'public'
   ownerEmail: string (optional, first user)
   createdAt: number (ISO timestamp, indexed)
 

@@ -16,7 +16,7 @@ const _schema = i.schema({
     // Canvas/Board - groups elements for collaboration
     canvases: i.entity({
       name: i.string(),
-      visibility: i.string().indexed().optional(), // 'private' | 'protected' | 'public' (default: private)
+      visibility: i.string().indexed().optional(), // 'readonly' | 'public' (default: public)
       ownerEmail: i.string().optional(),
       createdAt: i.number().indexed(),
     }),

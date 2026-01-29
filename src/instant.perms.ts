@@ -1,8 +1,7 @@
 // Docs: https://www.instantdb.com/docs/permissions
 // Visibility levels:
-// - private: only owner can view and edit
-// - protected: owner can edit, everyone can view
-// - public: everyone can view and edit
+// - readonly: owner can edit, everyone can view
+// - public: everyone can view and edit (default)
 
 import type { InstantRules } from "@instantdb/react";
 
@@ -18,10 +17,10 @@ const rules = {
     },
   },
   // Canvases - visibility-based access control
-  // null visibility is treated as 'private' (default)
+  // All canvases are viewable by everyone (readonly or public)
   canvases: {
     allow: {
-      view: "canView",
+      view: "true",
       create: "isAuthenticated",
       update: "isOwner",
       delete: "isOwner",
@@ -31,15 +30,14 @@ const rules = {
       isOwner: "auth.id != null && auth.id in data.ref('owner.id')",
       isMember: "auth.id != null && auth.id in data.ref('memberships.user.id')",
       isPublic: "data.visibility == 'public'",
-      isProtected: "data.visibility == 'protected'",
-      canView: "isPublic || isProtected || isOwner || isMember",
+      isReadonly: "data.visibility == 'readonly'",
     },
   },
 
-  // Elements - based on canvas visibility
+  // Elements - all viewable, edit based on canvas visibility
   elements: {
     allow: {
-      view: "canView",
+      view: "true",
       create: "canEdit",
       update: "canEdit && (!isLocked || isCreator)",
       delete: "canEdit && (!isLocked || isCreator)",
@@ -49,18 +47,16 @@ const rules = {
       isCanvasOwner: "auth.id != null && auth.id in data.ref('canvas.owner.id')",
       isCanvasMember: "auth.id != null && auth.id in data.ref('canvas.memberships.user.id')",
       isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
-      isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
-      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner || isCanvasMember",
-      canEdit: "isAuthenticated && (isCanvasOwner || isCanvasMember)",
+      canEdit: "isAuthenticated && (isCanvasOwner || isCanvasMember || isCanvasPublic)",
       isCreator: "auth.id != null && auth.id in data.ref('creator.id')",
       isLocked: "data.isLocked == true",
     },
   },
 
-  // Connections - based on canvas visibility
+  // Connections - all viewable, edit based on canvas visibility
   connections: {
     allow: {
-      view: "canView",
+      view: "true",
       create: "canEdit",
       update: "canEdit",
       delete: "canEdit",
@@ -70,16 +66,14 @@ const rules = {
       isCanvasOwner: "auth.id != null && auth.id in data.ref('canvas.owner.id')",
       isCanvasMember: "auth.id != null && auth.id in data.ref('canvas.memberships.user.id')",
       isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
-      isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
-      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner || isCanvasMember",
-      canEdit: "isAuthenticated && (isCanvasOwner || isCanvasMember)",
+      canEdit: "isAuthenticated && (isCanvasOwner || isCanvasMember || isCanvasPublic)",
     },
   },
 
-  // Comments - based on canvas visibility, authors can modify their own
+  // Comments - all viewable, authors can modify their own
   comments: {
     allow: {
-      view: "canView",
+      view: "true",
       create: "canEdit",
       update: "isAuthor",
       delete: "isAuthor",
@@ -90,9 +84,7 @@ const rules = {
       isCanvasOwner: "auth.id != null && auth.id in data.ref('element.canvas.owner.id')",
       isCanvasMember: "auth.id != null && auth.id in data.ref('element.canvas.memberships.user.id')",
       isCanvasPublic: "data.ref('element.canvas.visibility')[0] == 'public'",
-      isCanvasProtected: "data.ref('element.canvas.visibility')[0] == 'protected'",
-      canView: "isCanvasPublic || isCanvasProtected || isCanvasOwner || isCanvasMember",
-      canEdit: "isAuthenticated && (isCanvasOwner || isCanvasMember)",
+      canEdit: "isAuthenticated && (isCanvasOwner || isCanvasMember || isCanvasPublic)",
     },
   },
   canvas_memberships: {
@@ -107,9 +99,8 @@ const rules = {
       isSelf: "auth.id != null && auth.id in data.ref('user.id')",
       isCanvasOwner: "auth.id != null && auth.id in data.ref('canvas.owner.id')",
       isCanvasPublic: "data.ref('canvas.visibility')[0] == 'public'",
-      isCanvasProtected: "data.ref('canvas.visibility')[0] == 'protected'",
       canView: "isSelf || isCanvasOwner",
-      canCreate: "isAuthenticated && (isCanvasOwner || isCanvasPublic || isCanvasProtected)",
+      canCreate: "isAuthenticated",
       canDelete: "isSelf || isCanvasOwner",
     },
   },

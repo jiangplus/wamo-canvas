@@ -39,222 +39,9 @@ import { Minimap } from "./components/canvas/Minimap";
 import { Connection, ConnectionPreview } from "./components/canvas/Connection";
 import { ContextMenu } from "./components/ui/ContextMenu";
 
-// ============================================================================
-// VISIBILITY OPTIONS
-// ============================================================================
-const LockIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
-);
+// Icons
+import { IconLock } from "./icons";
 
-const ShieldIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-  </svg>
-);
-
-const GlobeIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <line x1="2" y1="12" x2="22" y2="12" />
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-  </svg>
-);
-
-const VISIBILITY_OPTIONS = [
-  {
-    value: "private",
-    label: "Private",
-    description: "Only you can view and edit",
-    icon: LockIcon,
-    color: "#6B7280",
-  },
-  {
-    value: "protected",
-    label: "Protected",
-    description: "Anyone can view, only you can edit",
-    icon: ShieldIcon,
-    color: "#F59E0B",
-  },
-  {
-    value: "public",
-    label: "Public",
-    description: "Anyone can view; edits require login",
-    icon: GlobeIcon,
-    color: "#10B981",
-  },
-];
-
-// ============================================================================
-// VISIBILITY BUTTON COMPONENT
-// ============================================================================
-function VisibilityButton({ visibility, onChangeVisibility, isOwner }) {
-  const [showDropdown, setShowDropdown] = useState(false);
-  const visibilityOption =
-    VISIBILITY_OPTIONS.find((o) => o.value === visibility) ||
-    VISIBILITY_OPTIONS[0];
-  const VisibilityIcon = visibilityOption.icon;
-
-  const handleVisibilityChange = (e, newVisibility) => {
-    if (!isOwner) return;
-    e.stopPropagation();
-    onChangeVisibility(newVisibility);
-    setShowDropdown(false);
-  };
-
-  return (
-    <div className="relative">
-      <button
-        onClick={(e) => {
-          if (!isOwner) return;
-          e.stopPropagation();
-          setShowDropdown(!showDropdown);
-        }}
-        className="flex items-center gap-2 px-4 py-2.5 transition-all hover:scale-[1.02]"
-        style={{
-          background: NEO.surface,
-          backdropFilter: "blur(20px)",
-          border: `1px solid ${NEO.border}`,
-          boxShadow: NEO.shadow,
-          borderRadius: NEO.radiusLg,
-          cursor: isOwner ? "pointer" : "default",
-          opacity: isOwner ? 1 : 0.7,
-        }}
-        title={visibilityOption.description}
-      >
-        <div
-          className="flex items-center justify-center w-7 h-7 rounded-md"
-          style={{
-            background: `${visibilityOption.color}15`,
-            color: visibilityOption.color,
-          }}
-        >
-          <VisibilityIcon />
-        </div>
-        <span className="text-sm font-medium" style={{ color: NEO.ink }}>
-          {visibilityOption.label}
-        </span>
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={NEO.inkLight}
-          strokeWidth="2"
-          style={{ marginLeft: "2px" }}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-
-      {showDropdown && (
-        <>
-          <div
-            className="fixed inset-0 z-[140]"
-            onClick={() => setShowDropdown(false)}
-          />
-          <div
-            className="absolute right-0 top-full mt-2 py-2 min-w-[220px] z-[150] animate-popIn"
-            style={{
-              background: NEO.surface,
-              backdropFilter: "blur(20px)",
-              border: `1px solid ${NEO.border}`,
-              borderRadius: NEO.radiusLg,
-              boxShadow: NEO.shadowHover,
-            }}
-          >
-            <div
-              className="px-4 py-2 mb-1 text-xs font-medium uppercase tracking-wide"
-              style={{ color: NEO.inkLight }}
-            >
-              Visibility
-            </div>
-            {VISIBILITY_OPTIONS.map((option) => {
-              const Icon = option.icon;
-              const isSelected = visibility === option.value;
-              return (
-                <button
-                  key={option.value}
-                  onClick={(e) => handleVisibilityChange(e, option.value)}
-                  className={`w-full px-4 py-2.5 flex items-center gap-3 text-left transition-all ${isOwner ? "hover:bg-black/5" : ""}`}
-                  style={{
-                    background: isSelected
-                      ? `${option.color}08`
-                      : "transparent",
-                    opacity: isOwner ? 1 : 0.5,
-                    cursor: isOwner ? "pointer" : "not-allowed",
-                  }}
-                >
-                  <div
-                    className="flex items-center justify-center w-8 h-8 rounded-lg"
-                    style={{
-                      background: `${option.color}15`,
-                      color: option.color,
-                    }}
-                  >
-                    <Icon />
-                  </div>
-                  <div className="flex-1">
-                    <div
-                      className="text-sm font-medium"
-                      style={{ color: NEO.ink }}
-                    >
-                      {option.label}
-                    </div>
-                    <div className="text-xs" style={{ color: NEO.inkLight }}>
-                      {option.description}
-                    </div>
-                  </div>
-                  {isSelected && (
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke={option.color}
-                      strokeWidth="2.5"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 // ============================================================================
 // CONSTANTS
@@ -270,9 +57,9 @@ const INITIAL_PICTURE_POOL = {
       url: "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=400",
     },
   ],
-  private: [
+  readonly: [
     {
-      id: "pr1",
+      id: "ro1",
       url: "https://images.unsplash.com/photo-1515405299443-f71bb768a69e?w=400",
     },
   ],
@@ -359,9 +146,8 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         return users.some((u) => u.id === userId);
       }),
   );
-  const canvasVisibility = canvas?.visibility || "private";
+  const canvasVisibility = canvas?.visibility || "public";
   const isPublic = canvasVisibility === "public";
-  const isPrivate = canvasVisibility === "private";
   const ownerKnown = Boolean(canvasOwnerId);
   // Important: keep client-side editability aligned with Instant permissions.
   // We allow editing for owners and members (membership is only joinable on non-private canvases).
@@ -369,8 +155,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   const canEdit =
     Boolean(userId) &&
     (isOwner || isMember);
-  const canChangeVisibility =
-    Boolean(userId) && isOwner;
   const canEditName = Boolean(userId) && isOwner;
   const hasValidOwner = Boolean(userId && user?.email);
   const currentUserName = user?.email?.split("@")[0] || "User";
@@ -696,13 +480,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     db.transact([tx.comments[commentId].delete()]);
   }, [canEdit]);
 
-  const changeCanvasVisibility = useCallback(
-    (visibility) => {
-      if (!canvasId || !canChangeVisibility) return;
-      db.transact([tx.canvases[canvasId].update({ visibility })]);
-    },
-    [canvasId, canChangeVisibility],
-  );
 
   const changeCanvasName = useCallback(
     (name) => {
@@ -716,7 +493,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
   const [isJoining, setIsJoining] = useState(false);
   const canJoin =
-    Boolean(userId) && !isOwner && !isMember && !isPrivate && Boolean(canvas);
+    Boolean(userId) && !isOwner && !isMember && Boolean(canvas);
 
   const handleJoinCanvas = async () => {
     if (!canvasId || !userId || !canJoin) return;
@@ -746,7 +523,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
   useEffect(() => {
     const imgAngles = {};
-    [...picturePool.public, ...picturePool.private].forEach((i) => {
+    [...picturePool.public, ...picturePool.readonly].forEach((i) => {
       if (!drawerImageAngles[i.id])
         imgAngles[i.id] = generateSmallRandomAngle(8);
     });
@@ -1454,7 +1231,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
             className="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full"
             style={{ background: `${NEO.inkLight}20` }}
           >
-            <LockIcon />
+            <IconLock />
           </div>
           <div className="text-lg font-semibold mb-2" style={{ color: NEO.ink }}>
             Unable to load canvas
@@ -1481,20 +1258,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
   // Check access: private canvases require owner
   const canView = Boolean(canvas);
 
-  if (effectiveAuthLoading && isPrivate) {
-    return (
-      <div
-        className="flex h-screen w-full items-center justify-center"
-        style={{ background: NEO.bg }}
-      >
-        <div className="text-center">
-          <div className="animate-pulse text-lg" style={{ color: NEO.ink }}>
-            Loading canvas...
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (!canvas || !canView) {
     return (
@@ -1515,15 +1278,13 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
             className="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full"
             style={{ background: `${NEO.inkLight}20` }}
           >
-            <LockIcon />
+            <IconLock />
           </div>
           <div className="text-lg font-semibold mb-2" style={{ color: NEO.ink }}>
-            {!canvas ? "Canvas not found" : "Access Denied"}
+            Canvas not found
           </div>
           <p className="text-sm mb-6" style={{ color: NEO.inkLight }}>
-            {!canvas
-              ? "This canvas may have been deleted or the link is invalid."
-              : "This canvas is private. Only the owner can view it."}
+            This canvas may have been deleted or the link is invalid.
           </p>
           <button
             onClick={onBack}
@@ -1570,15 +1331,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         canEditName={canEditName}
         onRename={changeCanvasName}
       />
-
-      {/* Visibility Button - positioned top-right before UserMenu */}
-      <div className="fixed top-8 right-[280px] z-[160]">
-        <VisibilityButton
-          visibility={canvasVisibility}
-          onChangeVisibility={changeCanvasVisibility}
-          isOwner={canChangeVisibility}
-        />
-      </div>
 
   <Toolbar
         activeTool={activeTool}
@@ -1906,7 +1658,12 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
             }));
         }}
       />
-      <ActionButtons />
+      <ActionButtons
+        canvasId={canvasId}
+        visibility={canvasVisibility}
+        isOwner={isOwner}
+        onVisibilityChange={(visibility) => {}}
+      />
 
       <style>{`* { font-family: "SF Pro Display", -apple-system, sans-serif; color-scheme: light; } body { background: ${NEO.bg}; margin: 0; } ::-webkit-scrollbar { display: none; } .animate-popIn { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); } @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } } .caret-animate { animation: caretBlink 1s step-end infinite; } @keyframes caretBlink { 0%, 100% { caret-color: ${NEO.ink}; } 50% { caret-color: transparent; } }`}</style>
     </div>
