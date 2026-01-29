@@ -415,7 +415,14 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     if (element && userId) {
       const previousState = extractElementState(element, OPERATION_TYPES.UPDATE);
       const newState = { ...previousState, ...updates };
-      recordOperation(OPERATION_TYPES.UPDATE, elementId, previousState, newState);
+      const creatorId = element.creator?.[0]?.id;
+      recordOperation(
+        OPERATION_TYPES.UPDATE,
+        elementId,
+        previousState,
+        newState,
+        creatorId,
+      );
     }
 
     db.transact([tx.elements[elementId].update(schemaUpdates)]);
@@ -444,7 +451,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       };
 
       // Record CREATE operation for undo/redo
-      recordOperation(OPERATION_TYPES.CREATE, elementId, null, elementData);
+      recordOperation(OPERATION_TYPES.CREATE, elementId, null, elementData, userId);
 
       db.transact([
         tx.elements[elementId]
@@ -467,7 +474,8 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       const element = elements.find((el) => el.id === elementId);
       if (element && userId) {
         const previousState = extractElementState(element, OPERATION_TYPES.DELETE);
-        recordOperation(OPERATION_TYPES.DELETE, elementId, previousState, null);
+        const creatorId = element.creator?.[0]?.id;
+        recordOperation(OPERATION_TYPES.DELETE, elementId, previousState, null, creatorId);
       }
 
       db.transact([tx.elements[elementId].delete()]);

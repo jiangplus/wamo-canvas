@@ -72,6 +72,8 @@ export function extractElementState(element, operation) {
       return {
         x: element.x,
         y: element.y,
+        width: element.width,
+        height: element.height,
         rotation: element.rotation,
         scale: element.scale,
         zIndex: element.zIndex,
@@ -79,6 +81,13 @@ export function extractElementState(element, operation) {
 
     case OPERATION_TYPES.UPDATE:
       return {
+        x: element.x,
+        y: element.y,
+        width: element.width,
+        height: element.height,
+        rotation: element.rotation,
+        scale: element.scale,
+        zIndex: element.zIndex,
         content: element.content,
         style: element.style,
         isLocked: element.isLocked,

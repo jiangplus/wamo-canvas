@@ -26,7 +26,7 @@ export function useOperationHistory(canvasId, userId) {
    * @param {object} newState - State after operation
    */
   const recordOperation = useCallback(
-    async (operation, elementId, previousState, newState) => {
+    async (operation, elementId, previousState, newState, creatorId) => {
       if (!canvasId || !userId) return;
       const currentTime = Date.now();
       const lastOp = lastOperationRef.current;
@@ -73,7 +73,7 @@ export function useOperationHistory(canvasId, userId) {
 
         // Create new history record
         const historyId = id();
-        const record = createHistoryRecord(
+        const dbRecord = createHistoryRecord(
           operation,
           elementId,
           canvasId,
@@ -81,10 +81,11 @@ export function useOperationHistory(canvasId, userId) {
           previousState,
           newState
         );
+        const record = { ...dbRecord, canvasId, userId, creatorId };
 
         await db.transact([
           tx.history[historyId]
-            .update(record)
+            .update(dbRecord)
             .link({ canvas: canvasId })
             .link({ user: userId }),
         ]);
@@ -119,14 +120,18 @@ export function useOperationHistory(canvasId, userId) {
           const { operation, elementId, previousState } = lastRecord;
 
           // Handle different operation types
+          const targetCanvasId = lastRecord.canvasId || canvasId;
+          const targetCreatorId = lastRecord.creatorId || userId;
+
           if (operation === OPERATION_TYPES.CREATE) {
             // For CREATE undo: delete the element
             await db.transact([tx.elements[elementId].delete()]);
           } else if (operation === OPERATION_TYPES.DELETE) {
             // For DELETE undo: recreate the element with previous state
-            await db.transact([
-              tx.elements[elementId].update(previousState),
-            ]);
+            const txs = [tx.elements[elementId].update(previousState)];
+            if (targetCanvasId) txs[0] = txs[0].link({ canvas: targetCanvasId });
+            if (targetCreatorId) txs[0] = txs[0].link({ creator: targetCreatorId });
+            await db.transact([txs[0]]);
           } else {
             // For UPDATE/MOVE: apply previous state
             await db.transact([
@@ -145,7 +150,7 @@ export function useOperationHistory(canvasId, userId) {
         console.error('Failed to undo:', error);
       }
     },
-    [historyStack]
+    [historyStack, canvasId, userId]
   );
 
   /**
@@ -164,11 +169,15 @@ export function useOperationHistory(canvasId, userId) {
           const { operation, elementId, newState } = nextRecord;
 
           // Handle different operation types
+          const targetCanvasId = nextRecord.canvasId || canvasId;
+          const targetCreatorId = nextRecord.creatorId || userId;
+
           if (operation === OPERATION_TYPES.CREATE) {
             // For CREATE redo: recreate the element
-            await db.transact([
-              tx.elements[elementId].update(newState),
-            ]);
+            const txs = [tx.elements[elementId].update(newState)];
+            if (targetCanvasId) txs[0] = txs[0].link({ canvas: targetCanvasId });
+            if (targetCreatorId) txs[0] = txs[0].link({ creator: targetCreatorId });
+            await db.transact([txs[0]]);
           } else if (operation === OPERATION_TYPES.DELETE) {
             // For DELETE redo: delete the element
             await db.transact([tx.elements[elementId].delete()]);
@@ -190,7 +199,7 @@ export function useOperationHistory(canvasId, userId) {
         console.error('Failed to redo:', error);
       }
     },
-    [redoStack]
+    [redoStack, canvasId, userId]
   );
 
   /**
