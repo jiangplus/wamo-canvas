@@ -3,6 +3,7 @@
  * 右下角操作按钮 - 分享
  */
 import React, { useState } from 'react';
+import html2canvas from 'html2canvas';
 import { NEO } from '../../styles/theme';
 import { IconShare } from '../../icons';
 import { db, tx } from '../../lib/db';
@@ -27,8 +28,17 @@ const CloseIcon = () => (
   </svg>
 );
 
+const DownloadIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
+
 function SharePopup({ isOpen, onClose, canvasId, visibility, isOwner, onVisibilityChange }) {
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const shareUrl = window.location.href;
 
   const handleCopy = async () => {
@@ -38,6 +48,45 @@ function SharePopup({ isOpen, onClose, canvasId, visibility, isOwner, onVisibili
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleDownloadAsJpeg = async () => {
+    try {
+      setDownloading(true);
+      const canvas = document.querySelector('main');
+      if (!canvas) {
+        console.error('Canvas element not found');
+        return;
+      }
+
+      const jpegCanvas = await html2canvas(canvas, {
+        backgroundColor: '#F3F2EE',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      });
+
+      // Convert to JPEG and download
+      jpegCanvas.toBlob(
+        (blob) => {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          const timestamp = new Date().toISOString().split('T')[0];
+          link.href = url;
+          link.download = `canvas-${timestamp}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          setDownloading(false);
+        },
+        'image/jpeg',
+        0.95
+      );
+    } catch (err) {
+      console.error('Failed to download canvas:', err);
+      setDownloading(false);
     }
   };
 
@@ -146,6 +195,24 @@ function SharePopup({ isOpen, onClose, canvasId, visibility, isOwner, onVisibili
               Copy Link
             </>
           )}
+        </button>
+
+        {/* Download button */}
+        <button
+          onClick={handleDownloadAsJpeg}
+          disabled={downloading}
+          className="w-full flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all hover:scale-[1.02] mt-2"
+          style={{
+            background: downloading ? NEO.inkLight : '#8B5CF6',
+            color: NEO.bg,
+            borderRadius: NEO.radius,
+            boxShadow: NEO.shadow,
+            cursor: downloading ? 'not-allowed' : 'pointer',
+            opacity: downloading ? 0.7 : 1,
+          }}
+        >
+          <DownloadIcon />
+          {downloading ? 'Generating...' : 'Download as JPEG'}
         </button>
 
         {/* Visibility Toggle - Owner only */}
