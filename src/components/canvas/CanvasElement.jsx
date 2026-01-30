@@ -251,7 +251,9 @@ export const CanvasElement = ({
   onEditingCommentTextChange,
   onSaveEditComment,
   onCancelEditComment,
-  editCommentInputRef
+  editCommentInputRef,
+  // Evolution Mode
+  isEvolutionMode = false
 }) => {
   const scale = element.scale || 1;
   
@@ -280,12 +282,14 @@ export const CanvasElement = ({
     : `rotate(${baseRotation}deg)`;
 
   return (
-    <div 
-      className="absolute" 
-      style={{ 
-        left: element.x, 
-        top: element.y, 
+    <div
+      className="absolute"
+      style={{
+        left: element.x,
+        top: element.y,
         zIndex: isSelected ? 100 : (element.zIndex || 20),
+        transition: isEvolutionMode ? 'left 0.1s ease-out, top 0.1s ease-out, transform 0.1s ease-out, opacity 0.15s ease-out' : 'none',
+        willChange: isEvolutionMode ? 'left, top, transform' : 'auto',
       }}
     >
       {/* Show toolbar when selected */}
@@ -301,7 +305,8 @@ export const CanvasElement = ({
           transform: containerTransform,
           transformOrigin: 'center center',
           overflow: 'visible',
-          cursor: canEdit ? (element.isLocked ? 'not-allowed' : 'grab') : 'default'
+          cursor: canEdit ? (element.isLocked ? 'not-allowed' : 'grab') : 'default',
+          transition: isEvolutionMode ? 'transform 0.1s ease-out' : 'none',
         }}
         onMouseDown={(e) => onMouseDown(e, element.id, 'move')}
         onPointerDown={(e) => onPointerDown?.(e, element.id, 'move')}
