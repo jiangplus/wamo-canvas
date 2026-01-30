@@ -360,6 +360,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     points: [],
   });
   const [textInput, setTextInput] = useState("New Idea...");
+  const [dragBuffer, setDragBuffer] = useState(null);
 
   useEffect(() => {
     if (!isEvolutionMode) {
@@ -486,23 +487,28 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     // Filter out non-schema fields
     const { comments, creator, ...schemaUpdates } = updates;
 
-    // Record operation for undo/redo
-    const element = elements.find((el) => el.id === elementId);
-    if (element && userId) {
-      const previousState = extractElementState(element, OPERATION_TYPES.UPDATE);
-      const newState = { ...previousState, ...updates };
-      const creatorId = element.creator?.[0]?.id;
-      recordOperation(
-        OPERATION_TYPES.UPDATE,
-        elementId,
-        previousState,
-        newState,
-        creatorId,
-      );
+    // Skip history recording if this is part of an active drag operation
+    const isDragBuffered = dragBuffer && dragBuffer.elementId === elementId;
+
+    if (!isDragBuffered) {
+      // Record operation for undo/redo (existing logic)
+      const element = elements.find((el) => el.id === elementId);
+      if (element && userId) {
+        const previousState = extractElementState(element, OPERATION_TYPES.UPDATE);
+        const newState = { ...previousState, ...updates };
+        const creatorId = element.creator?.[0]?.id;
+        recordOperation(
+          OPERATION_TYPES.UPDATE,
+          elementId,
+          previousState,
+          newState,
+          creatorId,
+        );
+      }
     }
 
     db.transact([tx.elements[elementId].update(schemaUpdates)]);
-  }, [canEdit, elements, userId, recordOperation]);
+  }, [canEdit, elements, userId, recordOperation, dragBuffer]);
 
   const addElement = useCallback(
     (data) => {
@@ -546,6 +552,11 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     (elementId) => {
       if (!elementId || !canEdit) return;
 
+      // Clear drag buffer if deleting dragged element
+      if (dragBuffer && dragBuffer.elementId === elementId) {
+        setDragBuffer(null);
+      }
+
       // Record DELETE operation for undo/redo
       const element = elements.find((el) => el.id === elementId);
       if (element && userId) {
@@ -557,7 +568,7 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       db.transact([tx.elements[elementId].delete()]);
       if (selectedId === elementId) setSelectedId(null);
     },
-    [selectedId, canEdit, elements, userId, recordOperation],
+    [selectedId, canEdit, elements, userId, recordOperation, dragBuffer],
   );
 
   const addConnection = useCallback(
@@ -714,6 +725,21 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         setContextMenu(null);
         setNewCommentTargetId(null);
         setEditingCommentId(null);
+
+        // Cancel active drag and clear buffer
+        if (dragBuffer) {
+          setDragBuffer(null);
+          setInteractionState("idle");
+          dragRef.current = { id: null, type: null };
+          // Restore element to initial position
+          if (dragBuffer.elementId && dragBuffer.initialState) {
+            const element = elements.find((el) => el.id === dragBuffer.elementId);
+            if (element) {
+              db.transact([tx.elements[dragBuffer.elementId].update(dragBuffer.initialState)]);
+            }
+          }
+        }
+
         if (lassoState.active)
           setLassoState({
             active: false,
@@ -946,6 +972,19 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
       centerY,
       initialDist,
     };
+
+    // Capture initial state for buffering (for move, resize, rotate)
+    if (type === "move" || type.startsWith("resize") || type === "rotate") {
+      const initialState = extractElementState(el, OPERATION_TYPES.UPDATE);
+      setDragBuffer({
+        elementId: elId,
+        initialState,
+        operationType: type === "move" ? OPERATION_TYPES.MOVE : OPERATION_TYPES.UPDATE,
+        startTime: Date.now(),
+        creatorId: el.creator?.[0]?.id
+      });
+    }
+
     setInteractionState(
       type === "move"
         ? "dragging"
@@ -1129,6 +1168,33 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
         }));
       setDraggedFromDrawer(null);
     }
+
+    // Commit buffered drag operation if exists
+    if (dragBuffer && interactionState !== "idle" && interactionState !== "panning") {
+      const { elementId, initialState, operationType, creatorId } = dragBuffer;
+      const element = elements.find((el) => el.id === elementId);
+
+      if (element) {
+        const finalState = extractElementState(element, operationType);
+
+        // Only record if something actually changed
+        const hasChanged = JSON.stringify(initialState) !== JSON.stringify(finalState);
+
+        if (hasChanged) {
+          recordOperation(
+            operationType,
+            elementId,
+            initialState,
+            finalState,
+            creatorId
+          );
+        }
+      }
+
+      // Clear buffer
+      setDragBuffer(null);
+    }
+
     setInteractionState("idle");
     dragRef.current = { id: null, type: null };
   };
