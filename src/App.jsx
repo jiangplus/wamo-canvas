@@ -278,16 +278,6 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
 
   const evolutionMax = historyRecords.length;
 
-  // Calculate playback timeline based on history timestamps
-  const evolutionTimeline = useMemo(() => {
-    if (historyRecords.length === 0) return { minTime: 0, maxTime: 0, duration: 0 };
-    const timestamps = historyRecords.map((r) => r.timestamp || 0);
-    const minTime = Math.min(...timestamps);
-    const maxTime = Math.max(...timestamps);
-    const duration = Math.max(1, maxTime - minTime); // Avoid division by zero
-    return { minTime, maxTime, duration };
-  }, [historyRecords]);
-
   const evolutionElements = useMemo(() => {
     if (!isEvolutionMode || evolutionMax === 0) return [];
     const elementMap = new Map();
@@ -390,65 +380,30 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
     setEvolutionProgress((prev) => Math.min(prev, evolutionMax));
   }, [evolutionMax]);
 
-  // Smooth 60 FPS playback with timestamp-based distribution
-  const playbackStartTimeRef = useRef(null);
+  // Smooth 60 FPS playback
   useEffect(() => {
     if (!isEvolutionMode || !isEvolutionPlaying) return;
     if (evolutionMax === 0) return;
 
-    if (!playbackStartTimeRef.current) {
-      playbackStartTimeRef.current = Date.now();
-    }
-
     let animationFrameId;
-    const playbackSpeed = 1.5; // Speed multiplier (1.5x real-time)
 
     const animate = () => {
-      const now = Date.now();
-      const elapsedMs = now - (playbackStartTimeRef.current || now);
-
       setEvolutionProgress((prev) => {
         if (prev >= evolutionMax) {
           setIsEvolutionPlaying(false);
-          playbackStartTimeRef.current = null;
           return evolutionMax;
         }
 
-        // Use timestamp-based distribution if available
-        if (evolutionTimeline.duration > 0 && historyRecords.length > 0) {
-          // Map elapsed playback time back to original timeline
-          const scaledElapsed = elapsedMs * playbackSpeed;
-          const targetTime = evolutionTimeline.minTime + (scaledElapsed / 1000); // Convert ms to match timestamp scale
-
-          // Find how many records should be shown at this time
-          let nextProgress = 0;
-          for (let i = 0; i < evolutionMax; i++) {
-            const recordTime = historyRecords[i].timestamp || 0;
-            if (recordTime <= targetTime) {
-              nextProgress = i + 1;
-            } else {
-              break;
-            }
-          }
-
-          return Math.max(prev, nextProgress); // Never go backwards
-        } else {
-          // Fallback: increment by ~1-2 operations per frame (~16ms = 60 FPS)
-          return Math.min(prev + 1, evolutionMax);
-        }
+        // Increment by 1 per frame at 60 FPS = smooth progression
+        return prev + 1;
       });
 
       animationFrameId = requestAnimationFrame(animate);
     };
 
     animationFrameId = requestAnimationFrame(animate);
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      if (!isEvolutionPlaying) {
-        playbackStartTimeRef.current = null;
-      }
-    };
-  }, [isEvolutionMode, isEvolutionPlaying, evolutionMax, historyRecords, evolutionTimeline]);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isEvolutionMode, isEvolutionPlaying, evolutionMax]);
   const [previewTextStyle, setPreviewTextStyle] = useState(
     generateMagazineStyle("New Idea..."),
   );
