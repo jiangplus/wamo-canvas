@@ -394,8 +394,8 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
           return evolutionMax;
         }
 
-        // Increment by 0.167 per frame at 60 FPS = ~10 seconds per 100 operations
-        return prev + 0.167;
+        // Increment by 0.083 per frame at 60 FPS = ~20 seconds per 100 operations
+        return prev + 0.083;
       });
 
       animationFrameId = requestAnimationFrame(animate);
