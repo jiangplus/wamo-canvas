@@ -394,8 +394,8 @@ export default function App({ canvasId, onBack, authLoading: authLoadingProp }) 
           return evolutionMax;
         }
 
-        // Increment by 1 per frame at 60 FPS = smooth progression
-        return prev + 1;
+        // Increment by 0.3 per frame at 60 FPS for slower, more viewable playback
+        return prev + 0.3;
       });
 
       animationFrameId = requestAnimationFrame(animate);
